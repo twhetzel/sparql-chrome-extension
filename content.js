@@ -43,6 +43,7 @@ function injectUI() {
       <input type="range" id="height-slider" min="40" max="250" value="80" style="width: 60%;">
     </div>
     <button id="nl-submit">Convert</button>
+    <button id="nl-clear" style="margin-left: 12px;">Clear</button>
     <div id="sparql-output" style="margin-top:1em;word-break:break-word;"></div>
   `;
   
@@ -53,6 +54,12 @@ function injectUI() {
   heightSlider.addEventListener('input', () => {
     textarea.style.height = `${heightSlider.value}px`;
   });
+
+  document.getElementById('nl-clear').onclick = function() {
+    document.getElementById('nl-input').value = '';
+    document.getElementById('sparql-output').innerHTML = '';
+  };
+
 
 
 document.getElementById('nl-submit').onclick = function() {
