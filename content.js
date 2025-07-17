@@ -1,4 +1,3 @@
-// Inject UI
 function escapeHtml(text) {
   var map = {
     '&': '&amp;',
@@ -11,31 +10,11 @@ function escapeHtml(text) {
 }
 
 function injectUI() {
-  // Inject highlight.js CSS if not already present
-  if (!document.getElementById('hljs-css')) {
-    const hljsCss = document.createElement('link');
-    hljsCss.id = 'hljs-css';
-    hljsCss.rel = "stylesheet";
-    hljsCss.href = chrome.runtime.getURL("css/github.min.css");
-    document.head.appendChild(hljsCss);
-  }
-
-  // Inject highlight.js JS if not already present
-  if (!document.getElementById('hljs-js')) {
-    const hljsScript = document.createElement('script');
-    hljsScript.id = 'hljs-js';
-    hljsScript.src = chrome.runtime.getURL("js/highlight.min.js");
-    hljsScript.onload = () => {
-      window.hljs && window.hljs.highlightAll();
-    };
-    document.head.appendChild(hljsScript);
-  }
-
-
   if (document.getElementById('nl-to-sparql-box')) return; // Avoid double inject
   const box = document.createElement('div');
   box.id = 'nl-to-sparql-box';
-  box.style = 'position:fixed;bottom:30px;right:30px;z-index:10000;background:white;padding:16px;border-radius:8px;box-shadow:0 2px 12px #888;max-width:400px;';
+  box.style = 'position:fixed;bottom:30px;right:30px;z-index:10000;background:white;padding:16px;border-radius:8px;box-shadow:0 2px 12px #888;max-width:520px;max-height:420px;overflow-y:auto;';
+  box.style = 'position:fixed;bottom:30px;right:30px;z-index:10000;background:white;padding:16px;border-radius:8px;box-shadow:0 2px 12px #888;max-width:520px;max-height:420px;overflow-y:auto;';
   box.innerHTML = `
     <b>Ask your SPARQL query:</b>
     <textarea id="nl-input" rows="3" style="width:100%;height:80px;resize:none;"></textarea>
@@ -47,7 +26,6 @@ function injectUI() {
     <button id="nl-copy" style="margin-left: 12px;">Copy</button>
     <div id="sparql-output" style="margin-top:1em;word-break:break-word;"></div>
   `;
-  
   document.body.appendChild(box);
 
   const heightSlider = document.getElementById('height-slider');
@@ -61,41 +39,41 @@ function injectUI() {
     document.getElementById('sparql-output').innerHTML = '';
   };
 
-
   document.getElementById('nl-copy').onclick = function() {
-  // Get text content from code block
   const codeElem = document.querySelector('#sparql-output code');
-    if (codeElem) {
-      let textToCopy = codeElem.innerText || codeElem.textContent;
+  if (codeElem) {
+    let textToCopy = codeElem.innerText || codeElem.textContent;
 
-      // Remove leading/trailing markdown fences if present
-      // This regex removes lines that are only ``` or ```sparql (case-insensitive)
-      textToCopy = textToCopy
-        .replace(/^\s*```[a-zA-Z]*\s*$/m, '')      // Remove ```sparql or similar at the start
-        .replace(/^\s*```\s*$/m, '')               // Remove ``` at end
-        .trim();
+    // Remove markdown code block fences
+    textToCopy = textToCopy
+      .replace(/^\s*```[a-zA-Z]*\s*$/m, '')
+      .replace(/^\s*```\s*$/m, '')
+      .trim();
 
-      navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-          // Optionally also paste into YASGUI textarea
-          const yasqeTextarea = document.querySelector('.yasqe textarea');
-          if (yasqeTextarea) {
-            yasqeTextarea.value = textToCopy;
-            yasqeTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-          // Optional: show feedback
-        })
-        .catch(() => {
-          alert('Copy failed!');
-        });
-    }
-  };
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        showCopySuccess();
+      })
+      .catch(() => {
+        alert('Copy failed!');
+      });
+  }
+};
+
+function showCopySuccess() {
+  let feedback = document.getElementById('copy-feedback');
+  if (!feedback) {
+    feedback = document.createElement('div');
+    feedback.id = 'copy-feedback';
+    feedback.style = 'color: green; font-weight: bold; margin-top: 8px;';
+    document.getElementById('sparql-output').appendChild(feedback);
+  }
+  feedback.innerText = 'Copied to clipboard!';
+  setTimeout(() => { if (feedback) feedback.innerText = ''; }, 1500);
+}
 
 
-
-
-
-document.getElementById('nl-submit').onclick = function() {
+  document.getElementById('nl-submit').onclick = function() {
     const text = document.getElementById('nl-input').value;
     document.getElementById('sparql-output').innerHTML = 'Generating SPARQL...';
 
@@ -130,16 +108,6 @@ document.getElementById('nl-submit').onclick = function() {
             document.getElementById('sparql-output').innerHTML =
               `<pre><code class="sparql">${escapeHtml(sparql)}</code></pre>`;
             if (window.hljs) window.hljs.highlightAll();
-
-            try {
-              const yasqeTextarea = document.querySelector('.yasqe textarea');
-              if (yasqeTextarea) {
-                yasqeTextarea.value = sparql;
-                yasqeTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            } catch (e) {
-              // fallback: nothing
-            }
           } catch (err) {
             document.getElementById('sparql-output').innerHTML =
               "Error: Extension context lost. Try reloading the page and the extension.";
