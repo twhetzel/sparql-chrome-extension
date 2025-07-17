@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "SPARQL Natural Language Assistant",
+  "version": "0.1",
+  "description": "Converts natural language to SPARQL using OpenAI.",
+  "permissions": ["storage", "scripting", "activeTab"],
+  "host_permissions": ["https://yasgui.triply.cc/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://yasgui.triply.cc/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "icons/sparql_icon_text_128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "js/highlight.min.js",
+        "css/github.min.css"
+      ],
+      "matches": ["https://yasgui.triply.cc/*"]
+    }
+  ]
+}
