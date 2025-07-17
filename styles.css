@@ -1,0 +1,27 @@
+#nl-to-sparql-box textarea {
+  font-family: monospace;
+  margin-top: 0.5em;
+}
+#nl-to-sparql-box button {
+  margin-top: 0.5em;
+}
+#nl-to-sparql-box {
+  max-width: 400px;
+  min-width: 260px;
+  max-height: 420px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 12px #888;
+}
+#sparql-output pre {
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: monospace;
+  font-size: 1em;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
