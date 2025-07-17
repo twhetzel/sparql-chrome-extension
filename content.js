@@ -44,6 +44,7 @@ function injectUI() {
     </div>
     <button id="nl-submit">Convert</button>
     <button id="nl-clear" style="margin-left: 12px;">Clear</button>
+    <button id="nl-copy" style="margin-left: 12px;">Copy</button>
     <div id="sparql-output" style="margin-top:1em;word-break:break-word;"></div>
   `;
   
@@ -59,6 +60,38 @@ function injectUI() {
     document.getElementById('nl-input').value = '';
     document.getElementById('sparql-output').innerHTML = '';
   };
+
+
+  document.getElementById('nl-copy').onclick = function() {
+  // Get text content from code block
+  const codeElem = document.querySelector('#sparql-output code');
+    if (codeElem) {
+      let textToCopy = codeElem.innerText || codeElem.textContent;
+
+      // Remove leading/trailing markdown fences if present
+      // This regex removes lines that are only ``` or ```sparql (case-insensitive)
+      textToCopy = textToCopy
+        .replace(/^\s*```[a-zA-Z]*\s*$/m, '')      // Remove ```sparql or similar at the start
+        .replace(/^\s*```\s*$/m, '')               // Remove ``` at end
+        .trim();
+
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          // Optionally also paste into YASGUI textarea
+          const yasqeTextarea = document.querySelector('.yasqe textarea');
+          if (yasqeTextarea) {
+            yasqeTextarea.value = textToCopy;
+            yasqeTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          // Optional: show feedback
+        })
+        .catch(() => {
+          alert('Copy failed!');
+        });
+    }
+  };
+
+
 
 
 
