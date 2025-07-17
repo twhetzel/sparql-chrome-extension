@@ -43,7 +43,7 @@ function injectUI() {
       <input type="range" id="height-slider" min="40" max="250" value="80" style="width: 60%;">
     </div>
     <button id="nl-submit">Convert</button>
-    <div id="sparql-output" style="margin-top:1em;word-break:break-word;max-height:150px;overflow:auto;"></div>
+    <div id="sparql-output" style="margin-top:1em;word-break:break-word;"></div>
   `;
   
   document.body.appendChild(box);

@@ -6,13 +6,10 @@
   margin-top: 0.5em;
 }
 #nl-to-sparql-box {
-  max-width: 400px;
-  min-width: 260px;
+  max-width: 520px;
+  min-width: 450px;
   max-height: 420px;
   overflow-y: auto;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 2px 12px #888;
 }
 #sparql-output pre {
   background: #f4f4f4;
@@ -24,4 +21,5 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
 
