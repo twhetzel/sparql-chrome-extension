@@ -11,7 +11,7 @@ The Chrome Extension is designed for use with the site https://yasgui.triply.cc/
 - Click on the SPARQL Assistant icon, which launch a pop-up window where you can enter your OpenAI API key.
 - Navigate to https://yasgui.triply.cc/#. The SPARQL Assistant will be visible in the bottom right-hand side of the browser.
 
-This Extension is under development and is not in the Chrome Web Store.
+**Note:** This Extension is under development and is not yet available in the Chrome Web Store.
 
 ## Prompting Guidelines
 When writing the details of a SPARQL query in plain English be sure to include a mention of these important parts of a SPARQL query:
