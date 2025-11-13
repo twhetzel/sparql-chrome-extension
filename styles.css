@@ -1,25 +1,160 @@
-#nl-to-sparql-box textarea {
-  font-family: monospace;
-  margin-top: 0.5em;
-}
-#nl-to-sparql-box button {
-  margin-top: 0.5em;
-}
-#nl-to-sparql-box {
+.nl-to-sparql-box {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 10000;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   max-width: 520px;
-  min-width: 450px;
+  min-width: 420px;
   max-height: 420px;
   overflow-y: auto;
+  font-family: sans-serif;
+  box-sizing: border-box;
 }
-#sparql-output pre {
-  background: #f4f4f4;
-  padding: 10px;
-  border-radius: 5px;
+
+.nl-to-sparql-box__title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.nl-drag-handle {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nl-to-sparql-box.is-dragging {
+  opacity: 0.95;
+}
+
+.nl-input {
+  width: 100%;
+  min-height: 120px;
+  resize: none;
   font-family: monospace;
-  font-size: 1em;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  background: #f8fafc;
 }
 
+.nl-input:focus {
+  outline: 2px solid #2563eb;
+  background: #ffffff;
+}
 
+.nl-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.nl-slider-row__label {
+  flex: 1;
+}
+
+.nl-slider {
+  flex: 2;
+}
+
+.nl-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.nl-button {
+  appearance: none;
+  border: 1px solid #cbd5f5;
+  background: #ffffff;
+  color: #1f2937;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.nl-button--primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.nl-button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.nl-button--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.nl-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nl-output {
+  margin-top: 8px;
+  word-break: break-word;
+}
+
+.nl-output pre {
+  background: #f4f4f4;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.nl-status {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #475569;
+  min-height: 1.2em;
+}
+
+.nl-status[data-status-type="success"] {
+  color: #15803d;
+}
+
+.nl-status[data-status-type="error"] {
+  color: #b91c1c;
+}
+
+.nl-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #2563eb;
+}
+
+.nl-spinner {
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: nl-spin 0.8s linear infinite;
+}
+
+@keyframes nl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
