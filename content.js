@@ -143,7 +143,8 @@ function injectUI() {
       </div>
       <div id="nl-context-status" class="nl-context-status" aria-live="polite"></div>
     </div>
-    <div class="nl-controls">
+    <hr class="nl-divider" aria-hidden="true">
+    <div id="nl-controls" class="nl-controls">
       <button id="nl-submit" class="nl-button nl-button--primary">Convert</button>
       <button id="nl-clear" class="nl-button">Clear</button>
       <button id="nl-copy" class="nl-button">Copy</button>
@@ -152,6 +153,17 @@ function injectUI() {
     </div>
     <div id="sparql-output" class="nl-output"></div>
     <div id="nl-status" class="nl-status" aria-live="polite"></div>
+    <section id="nl-history" class="nl-history" aria-label="Generated query history">
+      <div class="nl-history-header">
+        <span class="nl-history-title">History</span>
+        <div class="nl-history-actions">
+          <button id="nl-history-export" class="nl-button nl-button--secondary">Export JSON</button>
+          <button id="nl-history-clear" class="nl-button nl-button--secondary">Clear</button>
+        </div>
+      </div>
+      <p id="nl-history-empty" class="nl-history-empty">No history yet.</p>
+      <div id="nl-history-list" class="nl-history-list" role="list"></div>
+    </section>
   `;
   document.body.appendChild(box);
 
@@ -165,7 +177,278 @@ function injectUI() {
   const modelSelect = document.getElementById('nl-model-select');
   const allowedModels = ['gpt-5-chat-latest', 'gpt-4o', 'gpt-4.1'];
   const DEFAULT_MODEL = 'gpt-5-chat-latest';
+  const controls = document.getElementById('nl-controls');
+  const historyList = document.getElementById('nl-history-list');
+  const historyEmpty = document.getElementById('nl-history-empty');
+  const historyExportButton = document.getElementById('nl-history-export');
+  const historyClearButton = document.getElementById('nl-history-clear');
+  const getPasteButton = () => document.getElementById('nl-paste');
   let selectedModel = DEFAULT_MODEL;
+  const HISTORY_KEY = 'ontoprompt_history';
+  const MAX_HISTORY_ENTRIES = 50;
+  let historyEntries = [];
+
+  const formatTimestamp = timestamp => {
+    try {
+      return new Date(timestamp).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      });
+    } catch (err) {
+      return '';
+    }
+  };
+
+  const truncate = (text, limit = 160) => {
+    if (!text) return '';
+    if (text.length <= limit) return text;
+    return `${text.slice(0, limit - 1)}…`;
+  };
+
+  const persistHistory = () => {
+    chrome.storage.local.set({ [HISTORY_KEY]: historyEntries }, () => {
+      if (chrome.runtime?.lastError) {
+        console.warn('OntoPrompt: failed to persist history', chrome.runtime.lastError);
+      }
+    });
+  };
+
+  const renderHistory = () => {
+    if (!historyList || !historyEmpty) return;
+    historyList.innerHTML = '';
+    if (!historyEntries.length) {
+      historyEmpty.style.display = 'block';
+      historyList.style.display = 'none';
+      historyExportButton?.setAttribute('disabled', 'true');
+      historyClearButton?.setAttribute('disabled', 'true');
+      return;
+    }
+
+    historyEmpty.style.display = 'none';
+    historyList.style.display = 'flex';
+    historyExportButton?.removeAttribute('disabled');
+    historyClearButton?.removeAttribute('disabled');
+
+    const fragment = document.createDocumentFragment();
+    historyEntries.forEach(entry => {
+      const item = document.createElement('article');
+      item.className = 'nl-history-item';
+      item.setAttribute('role', 'listitem');
+      item.dataset.entryId = entry.id;
+      const promptPreview = truncate(entry.prompt || '(No prompt)');
+      const modelLabel = entry.model ? `Model: ${entry.model}` : 'Model not recorded';
+      const contextBlock = entry.context
+        ? `<pre>${escapeHtml(entry.context)}</pre>`
+        : '<p class="nl-history-item__muted">No additional context.</p>';
+
+      item.innerHTML = `
+        <div class="nl-history-item__top">
+          <div class="nl-history-item__summary">
+            <span class="nl-history-item__timestamp">${escapeHtml(formatTimestamp(entry.timestamp) || '')}</span>
+            <span class="nl-history-item__model">${escapeHtml(modelLabel)}</span>
+            <p class="nl-history-item__prompt">${escapeHtml(promptPreview)}</p>
+          </div>
+          <div class="nl-history-item__actions">
+            <button class="nl-history-button" data-action="restore" data-id="${entry.id}">Restore</button>
+            <button class="nl-history-button" data-action="copy" data-id="${entry.id}">Copy</button>
+            <button class="nl-history-button" data-action="paste" data-id="${entry.id}">Paste</button>
+          </div>
+        </div>
+        <details class="nl-history-item__details">
+          <summary>Show details</summary>
+          <div class="nl-history-item__section">
+            <strong>Prompt</strong>
+            <pre>${escapeHtml(entry.prompt || '')}</pre>
+          </div>
+          <div class="nl-history-item__section">
+            <strong>Context</strong>
+            ${contextBlock}
+          </div>
+          <div class="nl-history-item__section">
+            <strong>Generated SPARQL</strong>
+            <pre><code class="sparql">${escapeHtml(entry.query || '')}</code></pre>
+          </div>
+        </details>
+      `;
+      fragment.appendChild(item);
+    });
+
+    historyList.appendChild(fragment);
+    if (window.hljs) {
+      window.hljs.highlightAll();
+    }
+  };
+
+  const loadHistory = () => {
+    chrome.storage.local.get([HISTORY_KEY], result => {
+      const stored = result?.[HISTORY_KEY];
+      if (Array.isArray(stored)) {
+        historyEntries = stored;
+      } else {
+        historyEntries = [];
+      }
+      renderHistory();
+    });
+  };
+
+  const addHistoryEntry = entry => {
+    if (!entry || !entry.id) return;
+    const existingIndex = historyEntries.findIndex(
+      item =>
+        item.prompt === entry.prompt &&
+        item.context === entry.context &&
+        item.query === entry.query &&
+        item.model === entry.model
+    );
+    if (existingIndex !== -1) {
+      historyEntries.splice(existingIndex, 1);
+    }
+    historyEntries.unshift(entry);
+    if (historyEntries.length > MAX_HISTORY_ENTRIES) {
+      historyEntries = historyEntries.slice(0, MAX_HISTORY_ENTRIES);
+    }
+    persistHistory();
+    renderHistory();
+  };
+
+  const clearHistory = () => {
+    if (!historyEntries.length) {
+      setStatus('History is already empty.', 'info');
+      return;
+    }
+    if (!window.confirm('Clear all saved prompts and generated SPARQL queries?')) {
+      return;
+    }
+    historyEntries = [];
+    persistHistory();
+    renderHistory();
+    setStatus('History cleared.', 'success');
+    getPasteButton()?.classList.remove('nl-button--highlight');
+  };
+
+  const exportHistory = () => {
+    if (!historyEntries.length) {
+      setStatus('History is empty. Nothing to export.', 'info');
+      return;
+    }
+    const payload = JSON.stringify(historyEntries, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    chrome.downloads.download(
+      {
+        url,
+        filename: `ontoprompt-history-${timestamp}.json`,
+        saveAs: true
+      },
+      downloadId => {
+        if (chrome.runtime?.lastError) {
+          console.error('OntoPrompt: history export failed', chrome.runtime.lastError);
+          setStatus('Unable to export history.', 'error');
+        } else if (downloadId) {
+          setStatus('History export started.', 'success');
+        }
+        getPasteButton()?.classList.remove('nl-button--highlight');
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 2000);
+      }
+    );
+  };
+
+  const findHistoryEntry = id => historyEntries.find(entry => entry.id === id);
+
+  const restoreHistoryEntry = entry => {
+    textarea.value = entry.prompt || '';
+    contextTextarea.value = entry.context || '';
+    if (entry.context) {
+      setContextStatus('Context restored from history.', 'info');
+    } else {
+      setContextStatus('', 'info');
+    }
+    if (allowedModels.includes(entry.model)) {
+      selectedModel = entry.model;
+    } else {
+      selectedModel = DEFAULT_MODEL;
+    }
+    if (modelSelect) {
+      modelSelect.value = selectedModel;
+      chrome.storage.local.set({ openai_model: selectedModel });
+    }
+    if (entry.query) {
+      renderQuery(entry.query);
+      setStatus('History entry restored. Review or paste the SPARQL query.', 'success');
+      getPasteButton()?.classList.add('nl-button--highlight');
+    } else {
+      document.getElementById('sparql-output').innerHTML = '';
+      setStatus('History entry restored. Generate a new SPARQL query to continue.', 'info');
+    }
+    textarea.focus();
+  };
+
+  const copyHistoryEntry = entry => {
+    if (!entry.query) {
+      setStatus('No SPARQL query available to copy.', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(entry.query)
+      .then(() => {
+        setStatus('History query copied to clipboard.', 'success');
+        getPasteButton()?.classList.remove('nl-button--highlight');
+      })
+      .catch(() => {
+        setStatus('Copy failed. You may need to copy manually.', 'error');
+      });
+  };
+
+  const pasteHistoryEntry = (entry, triggerButton) => {
+    if (!entry.query) {
+      setStatus('No SPARQL query available to paste.', 'error');
+      return;
+    }
+    if (triggerButton) {
+      triggerButton.disabled = true;
+    }
+    setStatus('Pasting history query into YASGUI…', 'info');
+    insertIntoYasgui(entry.query)
+      .then(() => {
+        setStatus('History query pasted into YASGUI.', 'success');
+        getPasteButton()?.classList.remove('nl-button--highlight');
+      })
+      .catch(err => {
+        setStatus(err.message || 'Unable to paste history query.', 'error');
+      })
+      .finally(() => {
+        if (triggerButton) {
+          triggerButton.disabled = false;
+        }
+      });
+  };
+
+  const handleHistoryClick = event => {
+    const actionButton = event.target.closest('button[data-action]');
+    if (!actionButton) return;
+    const { action, id } = actionButton.dataset;
+    if (!id) return;
+    const entry = findHistoryEntry(id);
+    if (!entry) {
+      setStatus('History entry not found.', 'error');
+      return;
+    }
+    switch (action) {
+      case 'restore':
+        restoreHistoryEntry(entry);
+        break;
+      case 'copy':
+        copyHistoryEntry(entry);
+        break;
+      case 'paste':
+        pasteHistoryEntry(entry, actionButton);
+        break;
+      default:
+        break;
+    }
+  };
 
   function setContextStatus(message, type = 'info') {
     contextStatus.textContent = message;
@@ -208,6 +491,11 @@ function injectUI() {
     contextTextarea.value = '';
     setContextStatus('Context cleared.', 'info');
   });
+
+  historyList?.addEventListener('click', handleHistoryClick);
+  historyExportButton?.addEventListener('click', exportHistory);
+  historyClearButton?.addEventListener('click', clearHistory);
+  loadHistory();
 
   chrome.storage.local.get(['openai_model'], ({ openai_model: storedModel }) => {
     if (typeof storedModel === 'string') {
@@ -460,7 +748,17 @@ function injectUI() {
 
             renderQuery(cleaned);
             setStatus('Query generated. Review before executing.', 'success');
-            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+            addHistoryEntry({
+              id: `hist-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+              timestamp: Date.now(),
+              prompt,
+              context,
+              model: selectedModel,
+              query: cleaned
+            });
+            if (controls) {
+              controls.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
             const pasteButton = document.getElementById('nl-paste');
             if (pasteButton) {
               pasteButton.classList.add('nl-button--highlight');

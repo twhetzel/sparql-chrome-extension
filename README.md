@@ -9,6 +9,10 @@ OntoPrompt is a Chrome Extension designed for use with the site https://yasgui.t
 - Click on "Load unpacked". This will open a file browser. Select the entire folder that contains the Chrome Extension. A new card will be added to your Extensions for the OntoPrompt.
 - In the upper-right hand side of the browser, click on the Extensions icon and pin the OntoPrompt Extension so the icon remains visible in your Chrome browser.
 - Click on the OntoPrompt icon, which will launch a pop-up window where you can enter your OpenAI API key.
+- The OpenAI API key is stored as plain text in `chrome.storage.local` on your machine. Avoid installing this extension on shared machines unless you trust all users. You can clear the saved key by opening Chrome DevTools on `https://yasgui.triply.cc/#` and running:
+    ```
+    chrome.storage.local.remove('openai_api_key');
+    ```
 - Navigate to https://yasgui.triply.cc/#. The OntoPrompt window will be visible in the bottom right-hand side of the browser.
 
 ## Updating to the Latest Version
