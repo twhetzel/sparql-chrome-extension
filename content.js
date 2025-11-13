@@ -125,9 +125,13 @@ function injectUI() {
   box.innerHTML = `
     <div class="nl-to-sparql-box__title">Ask your SPARQL query:</div>
     <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
-    <label class="nl-context-label" for="nl-context-input">
-      <span>Optional context</span>
-    </label>
+    <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
+    <select id="nl-model-select" class="nl-model-select">
+      <option value="gpt-5-chat-latest">gpt-5-chat-latest</option>
+      <option value="gpt-4o">gpt-4o</option>
+      <option value="gpt-4.1">gpt-4.1</option>
+    </select>
+    <label class="nl-context-label" for="nl-context-input">Optional context</label>
     <div class="nl-context-section">
       <textarea id="nl-context-input" class="nl-context-input" rows="4" placeholder="Paste supplemental notes or ontology snippets that should inform the query (optional)."></textarea>
       <div class="nl-context-actions">
@@ -158,6 +162,10 @@ function injectUI() {
   const contextClearButton = document.getElementById('nl-context-clear');
   const contextStatus = document.getElementById('nl-context-status');
   const MAX_CONTEXT_CHARS = 20000;
+  const modelSelect = document.getElementById('nl-model-select');
+  const allowedModels = ['gpt-5-chat-latest', 'gpt-4o', 'gpt-4.1'];
+  const DEFAULT_MODEL = 'gpt-5-chat-latest';
+  let selectedModel = DEFAULT_MODEL;
 
   function setContextStatus(message, type = 'info') {
     contextStatus.textContent = message;
@@ -199,6 +207,31 @@ function injectUI() {
   contextClearButton.addEventListener('click', () => {
     contextTextarea.value = '';
     setContextStatus('Context cleared.', 'info');
+  });
+
+  chrome.storage.local.get(['openai_model'], ({ openai_model: storedModel }) => {
+    if (typeof storedModel === 'string') {
+      if (allowedModels.includes(storedModel)) {
+        selectedModel = storedModel;
+      } else if (storedModel === 'gpt-5.1') {
+        selectedModel = DEFAULT_MODEL;
+        chrome.storage.local.set({ openai_model: selectedModel });
+      } else {
+        selectedModel = DEFAULT_MODEL;
+      }
+    }
+    if (modelSelect) {
+      modelSelect.value = selectedModel;
+    }
+  });
+
+  modelSelect?.addEventListener('change', () => {
+    const value = modelSelect.value;
+    selectedModel = allowedModels.includes(value) ? value : DEFAULT_MODEL;
+    if (selectedModel !== value) {
+      modelSelect.value = selectedModel;
+    }
+    chrome.storage.local.set({ openai_model: selectedModel });
   });
 
   const dragHandle = box.querySelector('.nl-to-sparql-box__title');
@@ -309,7 +342,6 @@ function injectUI() {
     document.getElementById('sparql-output').innerHTML = '';
     setStatus('Cleared input.', 'info');
     contextTextarea.value = '';
-    updateContextCharCount();
     setContextStatus('', 'info');
   };
 
@@ -404,7 +436,7 @@ function injectUI() {
                 'Authorization': `Bearer ${apiKey}`
               },
               body: JSON.stringify({
-                model: 'gpt-5.1',
+                model: selectedModel,
                 messages: [
                   { role: 'system', content: 'You are an expert at writing SPARQL queries.' },
                   { role: 'user', content: userContent }

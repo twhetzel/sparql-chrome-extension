@@ -7,7 +7,8 @@
   padding: 16px;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
-  max-width: 640px;
+  width: 640px;
+  max-width: calc(100vw - 60px);
   min-width: 540px;
   max-height: 520px;
   overflow-y: auto;
@@ -67,15 +68,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.nl-context-charcount {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.nl-context-charcount.is-warning {
-  color: #b45309;
+  margin-bottom: 14px;
 }
 
 .nl-context-input {
@@ -118,6 +111,32 @@
 
 .nl-context-upload-btn:hover {
   background: #f1f5f9;
+}
+
+.nl-model-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #374151;
+  margin: 6px 0 4px;
+}
+
+.nl-model-select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #c9d1d9;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.nl-model-select:focus {
+  outline: 2px solid #2563eb;
+}
+
+.nl-context-label {
+  margin-top: 12px;
 }
 
 .nl-button--secondary {
