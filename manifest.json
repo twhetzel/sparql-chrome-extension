@@ -25,7 +25,8 @@
     {
       "resources": [
         "js/highlight.min.js",
-        "css/github.min.css"
+        "css/github.min.css",
+        "js/pasteBridge.js"
       ],
       "matches": ["https://yasgui.triply.cc/*"]
     }

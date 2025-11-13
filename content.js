@@ -1,122 +1,374 @@
 function escapeHtml(text) {
-  var map = {
+  const map = {
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
-    "'": '&#39;'
+    '\'': '&#39;'
   };
-  return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function stripMarkdownFences(text) {
+  if (!text) return '';
+  let trimmed = text.trim();
+  const fenceStart = /^```[\w-]*\s*/;
+  const fenceEnd = /```$/;
+  if (fenceStart.test(trimmed)) {
+    trimmed = trimmed.replace(fenceStart, '');
+  }
+  if (fenceEnd.test(trimmed)) {
+    trimmed = trimmed.replace(fenceEnd, '');
+  }
+  return trimmed.trim();
+}
+
+function getGeneratedQuery() {
+  const codeElem = document.querySelector('#sparql-output code');
+  if (!codeElem) return '';
+  const rawText = codeElem.innerText || codeElem.textContent || '';
+  return stripMarkdownFences(rawText);
+}
+
+let pasteBridgeReadyPromise = null;
+
+function ensurePasteBridge() {
+  if (pasteBridgeReadyPromise) return pasteBridgeReadyPromise;
+  pasteBridgeReadyPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('js/pasteBridge.js');
+    script.onload = () => {
+      script.remove();
+      resolve();
+    };
+    script.onerror = err => {
+      script.remove();
+      pasteBridgeReadyPromise = null;
+      reject(new Error('Failed to load YASGUI bridge script.'));
+    };
+    document.documentElement.appendChild(script);
+  });
+  return pasteBridgeReadyPromise;
+}
+
+async function insertIntoYasgui(query) {
+  await ensurePasteBridge();
+  const messageId = `nl-paste-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return new Promise((resolve, reject) => {
+    const listener = event => {
+      if (event.source !== window) return;
+      if (!event.data || event.data.type !== 'NL_TO_SPARQL_PASTE_RESPONSE') return;
+      if (event.data.id !== messageId) return;
+      window.removeEventListener('message', listener);
+      clearTimeout(timeout);
+      if (event.data.success) {
+        resolve();
+      } else {
+        reject(new Error(event.data.error || 'Unable to paste into YASGUI.'));
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      window.removeEventListener('message', listener);
+      reject(new Error('Timed out while contacting YASGUI.'));
+    }, 2000);
+
+    window.addEventListener('message', listener);
+    window.postMessage({ type: 'NL_TO_SPARQL_PASTE_REQUEST', id: messageId, query }, '*');
+  });
+}
+
+function setStatus(message, type = 'info') {
+  const statusEl = document.getElementById('nl-status');
+  if (!statusEl) return;
+  statusEl.textContent = message || '';
+  if (message) {
+    statusEl.setAttribute('data-status-type', type);
+  } else {
+    statusEl.removeAttribute('data-status-type');
+  }
+}
+
+function toggleActionButtons(disabled) {
+  const buttons = document.querySelectorAll('#nl-submit, #nl-clear, #nl-copy, #nl-paste');
+  buttons.forEach(btn => {
+    btn.disabled = disabled;
+  });
+}
+
+function renderLoadingState() {
+  const output = document.getElementById('sparql-output');
+  if (!output) return;
+  output.innerHTML = `
+    <div class="nl-loading">
+      <span class="nl-spinner" aria-hidden="true"></span>
+      <span>Generating SPARQL…</span>
+    </div>
+  `;
+}
+
+function renderQuery(query) {
+  const output = document.getElementById('sparql-output');
+  if (!output) return;
+  output.innerHTML = `<pre><code class="sparql">${escapeHtml(query)}</code></pre>`;
+  if (window.hljs) {
+    window.hljs.highlightAll();
+  }
 }
 
 function injectUI() {
-  if (document.getElementById('nl-to-sparql-box')) return; // Avoid double inject
+  if (document.getElementById('nl-to-sparql-box')) return;
+
   const box = document.createElement('div');
   box.id = 'nl-to-sparql-box';
-  box.style = 'position:fixed;bottom:30px;right:30px;z-index:10000;background:white;padding:16px;border-radius:8px;box-shadow:0 2px 12px #888;max-width:520px;max-height:420px;overflow-y:auto;';
-  box.style = 'position:fixed;bottom:30px;right:30px;z-index:10000;background:white;padding:16px;border-radius:8px;box-shadow:0 2px 12px #888;max-width:520px;max-height:420px;overflow-y:auto;';
+  box.className = 'nl-to-sparql-box';
   box.innerHTML = `
-    <b>Ask your SPARQL query:</b>
-    <textarea id="nl-input" rows="3" style="width:100%;height:80px;resize:none;"></textarea>
-    <div style="margin:6px 0 8px 0; text-align:center;">
-      <input type="range" id="height-slider" min="40" max="250" value="80" style="width: 60%;">
+    <div class="nl-to-sparql-box__title">Ask your SPARQL query:</div>
+    <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
+    <label class="nl-slider-row" for="height-slider">
+      <span class="nl-slider-row__label">Adjust input height</span>
+      <input type="range" id="height-slider" class="nl-slider" min="40" max="250" value="120">
+    </label>
+    <div class="nl-controls">
+      <button id="nl-submit" class="nl-button nl-button--primary">Convert</button>
+      <button id="nl-clear" class="nl-button">Clear</button>
+      <button id="nl-copy" class="nl-button">Copy</button>
+      <button id="nl-paste" class="nl-button">Paste to YASGUI</button>
+      <button id="nl-reset-position" class="nl-button">Reset Position</button>
     </div>
-    <button id="nl-submit">Convert</button>
-    <button id="nl-clear" style="margin-left: 12px;">Clear</button>
-    <button id="nl-copy" style="margin-left: 12px;">Copy</button>
-    <div id="sparql-output" style="margin-top:1em;word-break:break-word;"></div>
+    <div id="sparql-output" class="nl-output"></div>
+    <div id="nl-status" class="nl-status" aria-live="polite"></div>
   `;
   document.body.appendChild(box);
 
-  const heightSlider = document.getElementById('height-slider');
   const textarea = document.getElementById('nl-input');
+  const heightSlider = document.getElementById('height-slider');
   heightSlider.addEventListener('input', () => {
     textarea.style.height = `${heightSlider.value}px`;
   });
 
-  document.getElementById('nl-clear').onclick = function() {
-    document.getElementById('nl-input').value = '';
-    document.getElementById('sparql-output').innerHTML = '';
+  const dragHandle = box.querySelector('.nl-to-sparql-box__title');
+  dragHandle.classList.add('nl-drag-handle');
+  const dragState = {
+    active: false,
+    pointerId: null,
+    offsetX: 0,
+    offsetY: 0,
+    latestLeft: null,
+    latestTop: null
   };
 
-  document.getElementById('nl-copy').onclick = function() {
-  const codeElem = document.querySelector('#sparql-output code');
-  if (codeElem) {
-    let textToCopy = codeElem.innerText || codeElem.textContent;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    // Remove markdown code block fences
-    textToCopy = textToCopy
-      .replace(/^\s*```[a-zA-Z]*\s*$/m, '')
-      .replace(/^\s*```\s*$/m, '')
-      .trim();
+  const constraintPadding = 8;
 
-    navigator.clipboard.writeText(textToCopy)
+  const constrainToViewport = (left, top) => {
+    const maxLeft = window.innerWidth - box.offsetWidth - constraintPadding;
+    const maxTop = window.innerHeight - box.offsetHeight - constraintPadding;
+    return {
+      left: clamp(left, constraintPadding, Math.max(maxLeft, constraintPadding)),
+      top: clamp(top, constraintPadding, Math.max(maxTop, constraintPadding))
+    };
+  };
+
+  const applyPositionStyle = (left, top) => {
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    box.style.right = 'auto';
+    box.style.bottom = 'auto';
+  };
+
+  const savePosition = (left, top) => {
+    chrome.storage.local.set({ nl_panel_position: { left, top } });
+  };
+
+  const loadPosition = () => {
+    chrome.storage.local.get(['nl_panel_position'], ({ nl_panel_position: saved }) => {
+      if (!saved || typeof saved.left !== 'number' || typeof saved.top !== 'number') {
+        return;
+      }
+      const { left, top } = constrainToViewport(saved.left, saved.top);
+      applyPositionStyle(left, top);
+      dragState.latestLeft = left;
+      dragState.latestTop = top;
+    });
+  };
+
+  const onPointerMove = event => {
+    if (!dragState.active || event.pointerId !== dragState.pointerId) return;
+    const rawLeft = event.clientX - dragState.offsetX;
+    const rawTop = event.clientY - dragState.offsetY;
+    const { left, top } = constrainToViewport(rawLeft, rawTop);
+    applyPositionStyle(left, top);
+    dragState.latestLeft = left;
+    dragState.latestTop = top;
+  };
+
+  const endDrag = event => {
+    if (!dragState.active || event.pointerId !== dragState.pointerId) return;
+    dragState.active = false;
+    dragHandle.releasePointerCapture(event.pointerId);
+    box.classList.remove('is-dragging');
+    document.body.style.userSelect = '';
+    if (
+      typeof dragState.latestLeft === 'number' &&
+      typeof dragState.latestTop === 'number'
+    ) {
+      savePosition(dragState.latestLeft, dragState.latestTop);
+    }
+  };
+
+  dragHandle.addEventListener('pointerdown', event => {
+    if (event.button !== 0 && event.pointerType !== 'touch') return;
+    const rect = box.getBoundingClientRect();
+    dragState.active = true;
+    dragState.pointerId = event.pointerId;
+    dragState.offsetX = event.clientX - rect.left;
+    dragState.offsetY = event.clientY - rect.top;
+    dragHandle.setPointerCapture(event.pointerId);
+    box.classList.add('is-dragging');
+    document.body.style.userSelect = 'none';
+    event.preventDefault();
+  });
+
+  dragHandle.addEventListener('pointermove', onPointerMove);
+  dragHandle.addEventListener('pointerup', endDrag);
+  dragHandle.addEventListener('pointercancel', endDrag);
+
+  loadPosition();
+
+  window.addEventListener('resize', () => {
+    const currentLeft = parseFloat(box.style.left);
+    const currentTop = parseFloat(box.style.top);
+    if (Number.isNaN(currentLeft) || Number.isNaN(currentTop)) {
+      return;
+    }
+    const { left, top } = constrainToViewport(currentLeft, currentTop);
+    applyPositionStyle(left, top);
+    dragState.latestLeft = left;
+    dragState.latestTop = top;
+    savePosition(left, top);
+  });
+
+  document.getElementById('nl-clear').onclick = () => {
+    textarea.value = '';
+    document.getElementById('sparql-output').innerHTML = '';
+    setStatus('Cleared input.', 'info');
+  };
+
+  document.getElementById('nl-copy').onclick = () => {
+    const query = getGeneratedQuery();
+    if (!query) {
+      setStatus('There is no query to copy yet.', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(query)
       .then(() => {
-        showCopySuccess();
+        setStatus('Copied to clipboard.', 'success');
       })
       .catch(() => {
-        alert('Copy failed!');
+        setStatus('Copy failed. You may need to copy manually.', 'error');
       });
-  }
-};
+  };
 
-function showCopySuccess() {
-  let feedback = document.getElementById('copy-feedback');
-  if (!feedback) {
-    feedback = document.createElement('div');
-    feedback.id = 'copy-feedback';
-    feedback.style = 'color: green; font-weight: bold; margin-top: 8px;';
-    document.getElementById('sparql-output').appendChild(feedback);
-  }
-  feedback.innerText = 'Copied to clipboard!';
-  setTimeout(() => { if (feedback) feedback.innerText = ''; }, 1500);
-}
+  document.getElementById('nl-paste').onclick = async () => {
+    const query = getGeneratedQuery();
+    if (!query) {
+      setStatus('Generate a query before pasting into YASGUI.', 'error');
+      return;
+    }
+    const pasteButton = document.getElementById('nl-paste');
+    pasteButton.disabled = true;
+    setStatus('Pasting into YASGUI…', 'info');
+    try {
+      await insertIntoYasgui(query);
+      setStatus('Query pasted into YASGUI.', 'success');
+    } catch (err) {
+      setStatus(err.message || 'Unable to paste into YASGUI.', 'error');
+    } finally {
+      pasteButton.disabled = false;
+    }
+  };
 
+  document.getElementById('nl-reset-position').onclick = () => {
+    chrome.storage.local.remove(['nl_panel_position'], () => {
+      box.style.left = '';
+      box.style.top = '';
+      box.style.right = '';
+      box.style.bottom = '';
+      box.style.bottom = '30px';
+      box.style.right = '30px';
+      dragState.latestLeft = null;
+      dragState.latestTop = null;
+      setStatus('Panel position reset.', 'info');
+    });
+  };
 
-  document.getElementById('nl-submit').onclick = function() {
-    const text = document.getElementById('nl-input').value;
-    document.getElementById('sparql-output').innerHTML = 'Generating SPARQL...';
+  document.getElementById('nl-submit').onclick = () => {
+    const prompt = textarea.value.trim();
+    if (!prompt) {
+      setStatus('Please describe the query you need before converting.', 'error');
+      return;
+    }
+    renderLoadingState();
+    setStatus('');
+    toggleActionButtons(true);
 
     try {
-      chrome.storage.local.get(['openai_api_key'], function(result) {
+      chrome.storage.local.get(['openai_api_key'], ({ openai_api_key: apiKey }) => {
         (async () => {
           try {
-            const apiKey = result.openai_api_key;
             if (!apiKey) {
-              document.getElementById('sparql-output').innerHTML = 'API key missing!';
+              document.getElementById('sparql-output').innerHTML = '';
+              setStatus('OpenAI API key is missing. Add it from the extension popup.', 'error');
               return;
             }
-            const messages = [
-              { role: "system", content: "You are an expert at writing SPARQL queries." },
-              { role: "user", content: `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${text}` }
-            ];
-            const completion = await fetch("https://api.openai.com/v1/chat/completions", {
-              method: "POST",
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
               headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + apiKey
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
               },
               body: JSON.stringify({
-                model: "gpt-4o",
-                messages: messages,
+                model: 'gpt-4o',
+                messages: [
+                  { role: 'system', content: 'You are an expert at writing SPARQL queries.' },
+                  { role: 'user', content: `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}` }
+                ],
                 max_tokens: 512,
                 temperature: 0
               })
-            }).then(r => r.json());
+            });
 
-            const sparql = completion?.choices?.[0]?.message?.content || "Error generating query";
-            document.getElementById('sparql-output').innerHTML =
-              `<pre><code class="sparql">${escapeHtml(sparql)}</code></pre>`;
-            if (window.hljs) window.hljs.highlightAll();
+            if (!response.ok) {
+              throw new Error(`OpenAI API error (${response.status})`);
+            }
+
+            const completion = await response.json();
+            const content = completion?.choices?.[0]?.message?.content;
+            const cleaned = stripMarkdownFences(content);
+
+            if (!cleaned) {
+              throw new Error('The model returned an empty response.');
+            }
+
+            renderQuery(cleaned);
+            setStatus('Query generated. Review before executing.', 'success');
           } catch (err) {
-            document.getElementById('sparql-output').innerHTML =
-              "Error: Extension context lost. Try reloading the page and the extension.";
+            console.error('SPARQL generation error', err);
+            document.getElementById('sparql-output').innerHTML = '';
+            setStatus(err.message || 'Something went wrong while generating the query.', 'error');
+          } finally {
+            toggleActionButtons(false);
           }
         })();
       });
-    } catch (e) {
-      document.getElementById('sparql-output').innerHTML =
-        "Error: Extension context lost (outer). Try reloading the page and the extension.";
+    } catch (err) {
+      console.error('Unexpected error', err);
+      document.getElementById('sparql-output').innerHTML = '';
+      setStatus('Unexpected error: try reloading the page and the extension.', 'error');
+      toggleActionButtons(false);
     }
   };
 }
