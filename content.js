@@ -335,25 +335,40 @@ function injectUI() {
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    chrome.downloads.download(
-      {
-        url,
-        filename: `ontoprompt-history-${timestamp}.json`,
-        saveAs: true
-      },
-      downloadId => {
-        if (chrome.runtime?.lastError) {
-          console.error('OntoPrompt: history export failed', chrome.runtime.lastError);
+    const filename = `ontoprompt-history-${timestamp}.json`;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      getPasteButton()?.classList.remove('nl-button--highlight');
+    };
+
+    const fallbackToClipboard = () => {
+      navigator.clipboard.writeText(payload)
+        .then(() => {
+          setStatus('History copied to clipboard as JSON.', 'success');
+        })
+        .catch(err => {
+          console.error('OntoPrompt: failed to copy history', err);
           setStatus('Unable to export history.', 'error');
-        } else if (downloadId) {
-          setStatus('History export started.', 'success');
-        }
-        getPasteButton()?.classList.remove('nl-button--highlight');
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 2000);
-      }
-    );
+        })
+        .finally(cleanup);
+    };
+
+    try {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.rel = 'noopener';
+      anchor.target = '_blank';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      setStatus('History export started.', 'success');
+      setTimeout(cleanup, 2000);
+    } catch (err) {
+      console.error('OntoPrompt: history export failed', err);
+      fallbackToClipboard();
+    }
   };
 
   const findHistoryEntry = id => historyEntries.find(entry => entry.id === id);
