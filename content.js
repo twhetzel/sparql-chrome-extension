@@ -125,10 +125,24 @@ function injectUI() {
   box.innerHTML = `
     <div class="nl-to-sparql-box__title">Ask your SPARQL query:</div>
     <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
-    <label class="nl-slider-row" for="height-slider">
-      <span class="nl-slider-row__label">Adjust input height</span>
-      <input type="range" id="height-slider" class="nl-slider" min="40" max="250" value="120">
-    </label>
+    <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
+    <select id="nl-model-select" class="nl-model-select">
+      <option value="gpt-5-chat-latest">gpt-5-chat-latest</option>
+      <option value="gpt-4o">gpt-4o</option>
+      <option value="gpt-4.1">gpt-4.1</option>
+    </select>
+    <label class="nl-context-label" for="nl-context-input">Optional context</label>
+    <div class="nl-context-section">
+      <textarea id="nl-context-input" class="nl-context-input" rows="4" placeholder="Paste supplemental notes or ontology snippets that should inform the query (optional)."></textarea>
+      <div class="nl-context-actions">
+        <label class="nl-context-upload">
+          <input type="file" id="nl-context-file" accept=".txt,.md,.json,.sparql,.csv,.tsv,.ttl,.rdf" hidden>
+          <span class="nl-context-upload-btn">Upload context file</span>
+        </label>
+        <button id="nl-context-clear" type="button" class="nl-button nl-button--secondary">Clear context</button>
+      </div>
+      <div id="nl-context-status" class="nl-context-status" aria-live="polite"></div>
+    </div>
     <div class="nl-controls">
       <button id="nl-submit" class="nl-button nl-button--primary">Convert</button>
       <button id="nl-clear" class="nl-button">Clear</button>
@@ -142,9 +156,82 @@ function injectUI() {
   document.body.appendChild(box);
 
   const textarea = document.getElementById('nl-input');
-  const heightSlider = document.getElementById('height-slider');
-  heightSlider.addEventListener('input', () => {
-    textarea.style.height = `${heightSlider.value}px`;
+
+  const contextTextarea = document.getElementById('nl-context-input');
+  const contextFileInput = document.getElementById('nl-context-file');
+  const contextClearButton = document.getElementById('nl-context-clear');
+  const contextStatus = document.getElementById('nl-context-status');
+  const MAX_CONTEXT_CHARS = 20000;
+  const modelSelect = document.getElementById('nl-model-select');
+  const allowedModels = ['gpt-5-chat-latest', 'gpt-4o', 'gpt-4.1'];
+  const DEFAULT_MODEL = 'gpt-5-chat-latest';
+  let selectedModel = DEFAULT_MODEL;
+
+  function setContextStatus(message, type = 'info') {
+    contextStatus.textContent = message;
+    contextStatus.setAttribute('data-status-type', type);
+    contextStatus.style.display = message ? 'block' : 'none';
+  }
+
+  contextTextarea.addEventListener('input', () => {
+    if (contextTextarea.value.length > MAX_CONTEXT_CHARS) {
+      contextTextarea.value = contextTextarea.value.slice(0, MAX_CONTEXT_CHARS);
+      setContextStatus(`Context trimmed to ${MAX_CONTEXT_CHARS} characters.`, 'warning');
+    } else {
+      setContextStatus('', 'info');
+    }
+  });
+  setContextStatus('', 'info');
+
+  contextFileInput.addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) {
+      setContextStatus('File too large (max 512 KB).', 'warning');
+      contextFileInput.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = String(e.target?.result || '').slice(0, MAX_CONTEXT_CHARS);
+      contextTextarea.value = text;
+      setContextStatus(`Loaded context from ${file.name}.`, 'success');
+    };
+    reader.onerror = () => {
+      setContextStatus('Failed to read context file.', 'error');
+    };
+    reader.readAsText(file);
+    contextFileInput.value = '';
+  });
+
+  contextClearButton.addEventListener('click', () => {
+    contextTextarea.value = '';
+    setContextStatus('Context cleared.', 'info');
+  });
+
+  chrome.storage.local.get(['openai_model'], ({ openai_model: storedModel }) => {
+    if (typeof storedModel === 'string') {
+      if (allowedModels.includes(storedModel)) {
+        selectedModel = storedModel;
+      } else if (storedModel === 'gpt-5.1') {
+        selectedModel = DEFAULT_MODEL;
+        chrome.storage.local.set({ openai_model: selectedModel });
+      } else {
+        selectedModel = DEFAULT_MODEL;
+      }
+    }
+    if (modelSelect) {
+      modelSelect.value = selectedModel;
+    }
+  });
+
+  modelSelect?.addEventListener('change', () => {
+    const value = modelSelect.value;
+    selectedModel = allowedModels.includes(value) ? value : DEFAULT_MODEL;
+    if (selectedModel !== value) {
+      modelSelect.value = selectedModel;
+    }
+    chrome.storage.local.set({ openai_model: selectedModel });
   });
 
   const dragHandle = box.querySelector('.nl-to-sparql-box__title');
@@ -254,6 +341,13 @@ function injectUI() {
     textarea.value = '';
     document.getElementById('sparql-output').innerHTML = '';
     setStatus('Cleared input.', 'info');
+    contextTextarea.value = '';
+    setContextStatus('', 'info');
+  };
+
+  const triggerConversion = () => {
+    if (convertInProgress) return;
+    document.getElementById('nl-submit').click();
   };
 
   document.getElementById('nl-copy').onclick = () => {
@@ -262,6 +356,7 @@ function injectUI() {
       setStatus('There is no query to copy yet.', 'error');
       return;
     }
+    document.getElementById('nl-paste')?.classList.remove('nl-button--highlight');
     navigator.clipboard.writeText(query)
       .then(() => {
         setStatus('Copied to clipboard.', 'success');
@@ -283,6 +378,7 @@ function injectUI() {
     try {
       await insertIntoYasgui(query);
       setStatus('Query pasted into YASGUI.', 'success');
+      pasteButton.classList.remove('nl-button--highlight');
     } catch (err) {
       setStatus(err.message || 'Unable to paste into YASGUI.', 'error');
     } finally {
@@ -304,15 +400,19 @@ function injectUI() {
     });
   };
 
+  let convertInProgress = false;
+
   document.getElementById('nl-submit').onclick = () => {
     const prompt = textarea.value.trim();
     if (!prompt) {
       setStatus('Please describe the query you need before converting.', 'error');
       return;
     }
+    const context = contextTextarea.value.trim();
     renderLoadingState();
     setStatus('');
     toggleActionButtons(true);
+    convertInProgress = true;
 
     try {
       chrome.storage.local.get(['openai_api_key'], ({ openai_api_key: apiKey }) => {
@@ -324,6 +424,11 @@ function injectUI() {
               return;
             }
 
+            let userContent = `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}`;
+            if (context) {
+              userContent = `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}`;
+            }
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -331,10 +436,10 @@ function injectUI() {
                 'Authorization': `Bearer ${apiKey}`
               },
               body: JSON.stringify({
-                model: 'gpt-4o',
+                model: selectedModel,
                 messages: [
                   { role: 'system', content: 'You are an expert at writing SPARQL queries.' },
-                  { role: 'user', content: `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}` }
+                  { role: 'user', content: userContent }
                 ],
                 max_tokens: 512,
                 temperature: 0
@@ -355,12 +460,18 @@ function injectUI() {
 
             renderQuery(cleaned);
             setStatus('Query generated. Review before executing.', 'success');
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+            const pasteButton = document.getElementById('nl-paste');
+            if (pasteButton) {
+              pasteButton.classList.add('nl-button--highlight');
+            }
           } catch (err) {
             console.error('SPARQL generation error', err);
             document.getElementById('sparql-output').innerHTML = '';
             setStatus(err.message || 'Something went wrong while generating the query.', 'error');
           } finally {
             toggleActionButtons(false);
+            convertInProgress = false;
           }
         })();
       });
@@ -369,8 +480,16 @@ function injectUI() {
       document.getElementById('sparql-output').innerHTML = '';
       setStatus('Unexpected error: try reloading the page and the extension.', 'error');
       toggleActionButtons(false);
+      convertInProgress = false;
     }
   };
+
+  textarea.addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      triggerConversion();
+    }
+  });
 }
 
 window.addEventListener('load', injectUI);
