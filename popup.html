@@ -17,6 +17,26 @@
         gap: 12px;
       }
 
+      .popup-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+
+      .popup-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+      }
+
+      .popup-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0;
+        color: #1f2937;
+      }
+
       label {
         font-size: 0.9rem;
         font-weight: 600;
@@ -73,6 +93,10 @@
   </head>
   <body>
     <div class="popup-container">
+      <div class="popup-header">
+        <img src="icons/ontoprompt_icon_128.png" alt="OntoPrompt icon" class="popup-logo">
+        <p class="popup-title">OntoPrompt</p>
+      </div>
       <label for="apiKey">OpenAI API Key</label>
       <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
       <button id="saveBtn">Save</button>
