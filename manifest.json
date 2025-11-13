@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "SPARQL Natural Language Assistant",
-  "version": "0.1",
+  "name": "OntoPrompt",
+  "version": "0.2",
   "description": "Converts natural language to SPARQL using OpenAI.",
   "permissions": ["storage", "scripting", "activeTab"],
   "host_permissions": ["https://yasgui.triply.cc/*"],
@@ -19,7 +19,7 @@
     "default_popup": "popup.html"
   },
   "icons": {
-    "128": "icons/sparql_icon_text_128.png"
+    "128": "icons/ontoprompt_icon_128.png"
   },
   "web_accessible_resources": [
     {
