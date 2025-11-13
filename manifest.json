@@ -3,7 +3,7 @@
   "name": "OntoPrompt",
   "version": "0.3",
   "description": "Converts natural language to SPARQL using OpenAI.",
-  "permissions": ["storage", "scripting", "activeTab"],
+  "permissions": ["storage", "scripting", "activeTab", "downloads"],
   "host_permissions": ["https://yasgui.triply.cc/*"],
   "background": {
     "service_worker": "background.js"
