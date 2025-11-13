@@ -2,16 +2,82 @@
 <html>
   <head>
     <style>
-      body { font-family: sans-serif; min-width: 250px; }
-      label { display: block; margin-top: 1em; }
-      input { width: 100%; }
+      body {
+        font-family: sans-serif;
+        min-width: 260px;
+        margin: 0;
+        padding: 16px;
+        background: #f8fafc;
+        color: #1f2937;
+      }
+
+      .popup-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #374151;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #c9d1d9;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: sans-serif;
+        background: #ffffff;
+        box-sizing: border-box;
+        transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        background: #ffffff;
+      }
+
+      button {
+        align-self: flex-start;
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid #1d4ed8;
+        background: #2563eb;
+        color: #ffffff;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button:hover {
+        background: #1d4ed8;
+        box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      #status {
+        font-size: 0.85rem;
+        min-height: 1.2em;
+        color: #2563eb;
+      }
     </style>
   </head>
   <body>
-    <label for="apiKey">OpenAI API Key:</label>
-    <input type="password" id="apiKey" placeholder="sk-...">
-    <button id="saveBtn">Save</button>
-    <p id="status"></p>
+    <div class="popup-container">
+      <label for="apiKey">OpenAI API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+      <button id="saveBtn">Save</button>
+      <p id="status" aria-live="polite"></p>
+    </div>
     <script src="popup.js"></script>
   </body>
 </html>
