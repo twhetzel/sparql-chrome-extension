@@ -15,6 +15,36 @@ OntoPrompt is a Chrome Extension designed for use with the site https://yasgui.t
     ```
 - Navigate to https://yasgui.triply.cc/#. The OntoPrompt window will be visible in the bottom right-hand side of the browser.
 
+## OpenAI API Usage and Billing
+
+OntoPrompt uses the OpenAI API to generate SPARQL queries. Each query generation consumes API tokens, which may incur costs depending on your OpenAI account plan.
+
+**Pricing Information:**
+- OntoPrompt currently uses the `gpt-4.1` model
+- Current pricing: **$2.00 per 1M input tokens** (as of the latest update)
+- For the most up-to-date pricing information, see the [OpenAI Pricing Documentation](https://platform.openai.com/docs/pricing)
+- Pricing may vary by model and can change over time
+
+**To check your API usage and billing:**
+1. Visit the [OpenAI Platform](https://platform.openai.com/)
+2. Sign in to your OpenAI account
+3. Navigate to **Usage** in the left sidebar to view:
+   - Current usage statistics
+   - Token consumption by model
+   - Cost breakdown
+   - Usage limits and quotas
+4. Navigate to **Billing** to view:
+   - Payment methods
+   - Billing history
+   - Current balance
+   - Spending limits and alerts
+
+**Tips for managing costs:**
+- Monitor your usage regularly through the OpenAI dashboard
+- Set up usage alerts to be notified when you approach spending limits
+- Consider using the `gpt-4.1` model (currently the only available option) which is optimized for cost-effectiveness
+- Export your query history regularly to avoid regenerating queries unnecessarily
+
 ## Updating to the Latest Version
 1. In your local repository, pull the latest code:
    ```
