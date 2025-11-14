@@ -127,8 +127,6 @@ function injectUI() {
     <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
     <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
     <select id="nl-model-select" class="nl-model-select">
-      <option value="gpt-5-chat-latest">gpt-5-chat-latest</option>
-      <option value="gpt-4o">gpt-4o</option>
       <option value="gpt-4.1">gpt-4.1</option>
     </select>
     <label class="nl-context-label" for="nl-context-input">Optional context</label>
@@ -153,14 +151,21 @@ function injectUI() {
     </div>
     <div id="sparql-output" class="nl-output"></div>
     <div id="nl-status" class="nl-status" aria-live="polite"></div>
+    <div class="nl-footer">
+      <a href="https://github.com/twhetzel/sparql-chrome-extension/issues" target="_blank" rel="noopener noreferrer" class="nl-footer-link">Report an issue</a>
+    </div>
     <section id="nl-history" class="nl-history" aria-label="Generated query history">
-      <div class="nl-history-header">
-        <span class="nl-history-title">History</span>
-        <div class="nl-history-actions">
-          <button id="nl-history-export" class="nl-button nl-button--secondary">Export JSON</button>
-          <button id="nl-history-clear" class="nl-button nl-button--secondary">Clear</button>
+        <div class="nl-history-header">
+          <span class="nl-history-title">History</span>
+          <div class="nl-history-actions">
+            <button id="nl-history-export" class="nl-button nl-button--secondary">Export JSON</button>
+            <label class="nl-history-import-label">
+              <input type="file" id="nl-history-import" accept=".json" hidden>
+              <span class="nl-button nl-button--secondary">Import JSON</span>
+            </label>
+            <button id="nl-history-clear" class="nl-button nl-button--secondary">Clear</button>
+          </div>
         </div>
-      </div>
       <p id="nl-history-empty" class="nl-history-empty">No history yet.</p>
       <div id="nl-history-list" class="nl-history-list" role="list"></div>
     </section>
@@ -175,11 +180,12 @@ function injectUI() {
   const contextStatus = document.getElementById('nl-context-status');
   const MAX_CONTEXT_CHARS = 20000;
   const modelSelect = document.getElementById('nl-model-select');
-  const allowedModels = ['gpt-5-chat-latest', 'gpt-4o', 'gpt-4.1'];
-  const DEFAULT_MODEL = 'gpt-5-chat-latest';
+  const allowedModels = ['gpt-4.1'];
+  const DEFAULT_MODEL = 'gpt-4.1';
   const controls = document.getElementById('nl-controls');
   const historyList = document.getElementById('nl-history-list');
   const historyEmpty = document.getElementById('nl-history-empty');
+  const historyImportInput = document.getElementById('nl-history-import');
   const historyExportButton = document.getElementById('nl-history-export');
   const historyClearButton = document.getElementById('nl-history-clear');
   const getPasteButton = () => document.getElementById('nl-paste');
@@ -252,6 +258,7 @@ function injectUI() {
             <button class="nl-history-button" data-action="restore" data-id="${entry.id}">Restore</button>
             <button class="nl-history-button" data-action="copy" data-id="${entry.id}">Copy</button>
             <button class="nl-history-button" data-action="paste" data-id="${entry.id}">Paste</button>
+            <button class="nl-history-button" data-action="delete" data-id="${entry.id}" title="Delete this entry">Delete</button>
           </div>
         </div>
         <details class="nl-history-item__details">
@@ -316,7 +323,10 @@ function injectUI() {
       setStatus('History is already empty.', 'info');
       return;
     }
-    if (!window.confirm('Clear all saved prompts and generated SPARQL queries?')) {
+    const message = `Are you sure you want to clear all ${historyEntries.length} history entries?\n\n` +
+      `⚠️ This action cannot be undone.\n\n` +
+      `Have you exported your history? If not, click "Cancel" and use the "Export JSON" button first.`;
+    if (!window.confirm(message)) {
       return;
     }
     historyEntries = [];
@@ -440,6 +450,67 @@ function injectUI() {
       });
   };
 
+  const deleteHistoryEntry = id => {
+    const entry = findHistoryEntry(id);
+    if (!entry) {
+      setStatus('History entry not found.', 'error');
+      return;
+    }
+    const promptPreview = truncate(entry.prompt || '(No prompt)', 50);
+    if (!window.confirm(`Delete this history entry?\n\n"${promptPreview}"\n\nThis action cannot be undone.`)) {
+      return;
+    }
+    const index = historyEntries.findIndex(e => e.id === id);
+    if (index !== -1) {
+      historyEntries.splice(index, 1);
+      persistHistory();
+      renderHistory();
+      setStatus('History entry deleted.', 'success');
+    }
+  };
+
+  const importHistory = file => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) {
+          setStatus('Invalid history file format. Expected a JSON array.', 'error');
+          return;
+        }
+        // Validate entries have required fields
+        const validEntries = imported.filter(entry => entry && entry.id && (entry.prompt || entry.query));
+        if (validEntries.length === 0) {
+          setStatus('No valid history entries found in the file.', 'error');
+          return;
+        }
+        // Merge with existing history, avoiding duplicates by ID
+        const existingIds = new Set(historyEntries.map(e => e.id));
+        const newEntries = validEntries.filter(e => !existingIds.has(e.id));
+        if (newEntries.length === 0) {
+          setStatus('All entries in the file already exist in history.', 'info');
+          return;
+        }
+        historyEntries = [...historyEntries, ...newEntries].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        // Keep only the most recent 50 entries
+        if (historyEntries.length > 50) {
+          historyEntries = historyEntries.slice(0, 50);
+        }
+        persistHistory();
+        renderHistory();
+        setStatus(`Imported ${newEntries.length} history ${newEntries.length === 1 ? 'entry' : 'entries'}.`, 'success');
+      } catch (err) {
+        console.error('OntoPrompt: failed to import history', err);
+        setStatus('Failed to parse history file. Please check the file format.', 'error');
+      }
+    };
+    reader.onerror = () => {
+      setStatus('Failed to read history file.', 'error');
+    };
+    reader.readAsText(file);
+  };
+
   const handleHistoryClick = event => {
     const actionButton = event.target.closest('button[data-action]');
     if (!actionButton) return;
@@ -459,6 +530,9 @@ function injectUI() {
         break;
       case 'paste':
         pasteHistoryEntry(entry, actionButton);
+        break;
+      case 'delete':
+        deleteHistoryEntry(id);
         break;
       default:
         break;
@@ -508,6 +582,13 @@ function injectUI() {
   });
 
   historyList?.addEventListener('click', handleHistoryClick);
+  historyImportInput?.addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (file) {
+      importHistory(file);
+      event.target.value = ''; // Reset input so same file can be imported again
+    }
+  });
   historyExportButton?.addEventListener('click', exportHistory);
   historyClearButton?.addEventListener('click', clearHistory);
   loadHistory();
@@ -516,11 +597,10 @@ function injectUI() {
     if (typeof storedModel === 'string') {
       if (allowedModels.includes(storedModel)) {
         selectedModel = storedModel;
-      } else if (storedModel === 'gpt-5.1') {
+      } else {
+        // Migrate any old model selections to the new default
         selectedModel = DEFAULT_MODEL;
         chrome.storage.local.set({ openai_model: selectedModel });
-      } else {
-        selectedModel = DEFAULT_MODEL;
       }
     }
     if (modelSelect) {

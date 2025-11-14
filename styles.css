@@ -120,13 +120,14 @@
 }
 
 .nl-model-label {
-  display: block;
+  display: none; /* Hidden when only one model is available */
   font-size: 0.85rem;
   color: #374151;
   margin: 6px 0 4px;
 }
 
 .nl-model-select {
+  display: none; /* Hidden when only one model is available */
   width: 100%;
   padding: 6px 10px;
   border-radius: 6px;
@@ -267,8 +268,8 @@
 }
 
 .nl-history {
-  margin-top: 16px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 0;
+  border-top: none;
   padding-top: 12px;
   display: flex;
   flex-direction: column;
@@ -291,6 +292,22 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.nl-history-import-label {
+  display: inline-flex;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
+}
+
+.nl-history-import-label input[type="file"] {
+  display: none;
+}
+
+.nl-history-import-label .nl-button {
+  margin: 0;
 }
 
 .nl-history-empty {
@@ -446,4 +463,26 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.nl-footer {
+  margin-top: 16px;
+  margin-bottom: 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.nl-footer-link {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nl-footer-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }

@@ -119,6 +119,25 @@
       #status[data-status="error"] {
         color: #ea580c;
       }
+
+      .popup-footer {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+        text-align: center;
+      }
+
+      .popup-footer-link {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+
+      .popup-footer-link:hover {
+        color: #2563eb;
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
@@ -134,6 +153,9 @@
       <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
       <button id="saveBtn">Save</button>
       <p id="status" aria-live="polite"></p>
+      <div class="popup-footer">
+        <a href="https://github.com/twhetzel/sparql-chrome-extension/issues" target="_blank" rel="noopener noreferrer" class="popup-footer-link">Report an issue</a>
+      </div>
     </div>
     <script src="popup.js"></script>
   </body>
