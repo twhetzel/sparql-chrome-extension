@@ -58,6 +58,93 @@
   font-size: 0.85rem;
   color: #374151;
   margin-bottom: 6px;
+  position: relative;
+}
+
+.nl-context-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.2s ease;
+}
+
+.nl-context-help:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.nl-context-help-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  padding: 12px 32px 12px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10001;
+  max-width: 400px;
+  min-width: 300px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #1f2937;
+  display: block;
+}
+
+.nl-context-help-tooltip[hidden] {
+  display: none !important;
+}
+
+.nl-context-help-tooltip p {
+  margin: 0 0 8px 0;
+}
+
+.nl-context-help-tooltip p:last-of-type {
+  margin-bottom: 0;
+}
+
+.nl-context-help-tooltip a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.nl-context-help-tooltip a:hover {
+  text-decoration: underline;
+}
+
+.nl-context-help-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.nl-context-help-close:hover {
+  background: #f1f5f9;
+  color: #1f2937;
 }
 
 .nl-context-section {

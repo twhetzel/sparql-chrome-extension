@@ -129,7 +129,17 @@ function injectUI() {
     <select id="nl-model-select" class="nl-model-select">
       <option value="gpt-4.1">gpt-4.1</option>
     </select>
-    <label class="nl-context-label" for="nl-context-input">Optional context</label>
+    <label class="nl-context-label" for="nl-context-input">
+      Optional context
+      <button type="button" class="nl-context-help" aria-label="Help with context" title="Help with context">
+        <span aria-hidden="true">?</span>
+      </button>
+      <div id="nl-context-help-tooltip" class="nl-context-help-tooltip" role="tooltip" hidden>
+        <p>The context field allows you to provide additional information about your ontology that helps generate more accurate SPARQL queries. You can paste ontology snippets, prefixes, or upload a file containing relevant context.</p>
+        <p>Need help creating a context file for your ontology? <a href="https://github.com/twhetzel/sparql-chrome-extension/issues" target="_blank" rel="noopener noreferrer">Ask for help on our issue tracker</a>.</p>
+        <button type="button" class="nl-context-help-close" aria-label="Close help">×</button>
+      </div>
+    </label>
     <div class="nl-context-section">
       <textarea id="nl-context-input" class="nl-context-input" rows="4" placeholder="Paste supplemental notes or ontology snippets that should inform the query (optional)."></textarea>
       <div class="nl-context-actions">
@@ -579,6 +589,53 @@ function injectUI() {
   contextClearButton.addEventListener('click', () => {
     contextTextarea.value = '';
     setContextStatus('Context cleared.', 'info');
+  });
+
+  const contextHelpButton = document.querySelector('.nl-context-help');
+  const contextHelpTooltip = document.getElementById('nl-context-help-tooltip');
+  const contextHelpClose = document.querySelector('.nl-context-help-close');
+
+  const showContextHelp = () => {
+    if (contextHelpTooltip) {
+      contextHelpTooltip.removeAttribute('hidden');
+      // Let CSS handle the display
+    }
+  };
+
+  const hideContextHelp = () => {
+    if (contextHelpTooltip) {
+      contextHelpTooltip.setAttribute('hidden', '');
+      // Let CSS handle the display
+    }
+  };
+
+  contextHelpButton?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!contextHelpTooltip) {
+      console.error('OntoPrompt: context help tooltip not found');
+      return;
+    }
+    const isHidden = contextHelpTooltip.hasAttribute('hidden');
+    if (isHidden) {
+      showContextHelp();
+    } else {
+      hideContextHelp();
+    }
+  });
+
+  contextHelpClose?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideContextHelp();
+  });
+
+  // Close tooltip when clicking outside
+  document.addEventListener('click', (e) => {
+    if (contextHelpTooltip && !contextHelpTooltip.hidden) {
+      if (!contextHelpTooltip.contains(e.target) && !contextHelpButton?.contains(e.target)) {
+        hideContextHelp();
+      }
+    }
   });
 
   historyList?.addEventListener('click', handleHistoryClick);
