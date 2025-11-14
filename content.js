@@ -744,7 +744,7 @@ function injectUI() {
                   { role: 'system', content: 'You are an expert at writing SPARQL queries.' },
                   { role: 'user', content: userContent }
                 ],
-                max_tokens: 512,
+                max_tokens: 1024,
                 temperature: 0
               })
             });
