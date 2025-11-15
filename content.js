@@ -864,9 +864,9 @@ function injectUI() {
               return;
             }
 
-            let userContent = `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}`;
+            let userContent = `EXTENSION_MODE\n\nWrite a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}`;
             if (context) {
-              userContent = `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}`;
+              userContent = `EXTENSION_MODE\n\nUse the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}`;
             }
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
