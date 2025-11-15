@@ -3,6 +3,12 @@
 ## Description
 OntoPrompt is a Chrome Extension designed for use with the site https://yasgui.triply.cc/# and to generate queries for the Ubergraph endpoint https://ubergraph.apps.renci.org/sparql. OntoPrompt allows the user to ask a question about an ontology in natural language and the Extension converts into a SPARQL query. OntoPrompt uses OpenAI to convert the natural language question into SPARQL, therefore an OpenAI API key is needed to use the Extension.
 
+## Demo
+
+Watch OntoPrompt in action! See how to use the extension to convert natural language questions into SPARQL queries.
+
+**[Demo Video](icons/demo_video.mov)** - A walkthrough demonstrating how to use OntoPrompt to generate SPARQL queries from natural language prompts. _Coming soon..._
+
 ## Installation
 - Clone or download the code. For stable versions, use the [latest release](https://github.com/twhetzel/sparql-chrome-extension/releases.)
 - Open your Chrome browser and go to Settings --> Extensions
@@ -14,6 +20,21 @@ OntoPrompt is a Chrome Extension designed for use with the site https://yasgui.t
     chrome.storage.local.remove('openai_api_key');
     ```
 - Navigate to https://yasgui.triply.cc/#. The OntoPrompt window will be visible in the bottom right-hand side of the browser.
+
+## Prompting Guidelines
+When writing the details of a SPARQL query in plain English be sure to include a mention of these important parts of a SPARQL query:
+- what fields should be selected
+- what ontology should be queried
+- mention whether obsolete terms should be excluded
+- mention other conditions that should be matched
+- include a Context file for your ontology for detailed instructions to get the most accurate response
+- to build up complex queries, start with a basic query and add more conditions as needed for the complexity of the query/information to extract from the ontology.
+
+For detailed information on best practices for prompting to generate SPARQL queries as well as a sample Context file, see the OBO Academy tutorial [Generating SPARQL queries using Large Language Models LLMs](https://oboacademy.github.io/obook/tutorial/sparql-llm/#generating-sparql-queries-using-large-language-models-llms)
+
+
+## Additional Features
+Request new features or post bug reports using the [issue tracker](https://github.com/twhetzel/sparql-chrome-extension/issues).
 
 ## OpenAI API Usage and Billing
 
@@ -59,18 +80,3 @@ OntoPrompt uses the OpenAI API to generate SPARQL queries. Each query generation
 ![Chrome extension reload button](icons/ontoprompt_reload_button.png)
 
 **Note:** This Extension is under development and is not yet available in the Chrome Web Store.
-
-## Prompting Guidelines
-When writing the details of a SPARQL query in plain English be sure to include a mention of these important parts of a SPARQL query:
-- what fields should be selected
-- what ontology should be queried
-- mention whether obsolete terms should be excluded
-- mention other conditions that should be matched
-
-To build up complex queries, start with a basic query and add more conditions as needed for the complexity of the query/information to extract from the ontology.
-
-For detailed information on best practices for prompting to generate SPARQL queries, see the OBO Academy tutorial [Generating SPARQL queries using Large Language Models LLMs](https://oboacademy.github.io/obook/tutorial/sparql-llm/#generating-sparql-queries-using-large-language-models-llms)
-
-
-## Additional Features
-Request new features or post bug reports using the [issue tracker](https://github.com/twhetzel/sparql-chrome-extension/issues).
