@@ -224,7 +224,7 @@ function injectUI() {
   const persistHistory = () => {
     chrome.storage.local.set({ [HISTORY_KEY]: historyEntries }, () => {
       if (chrome.runtime?.lastError) {
-        console.warn('OntoPrompt: failed to persist history', chrome.runtime.lastError);
+        console.warn('SPARQLPrompt: failed to persist history', chrome.runtime.lastError);
       }
     });
   };
@@ -368,7 +368,7 @@ function injectUI() {
           setStatus('History copied to clipboard as JSON.', 'success');
         })
         .catch(err => {
-          console.error('OntoPrompt: failed to copy history', err);
+          console.error('SPARQLPrompt: failed to copy history', err);
           setStatus('Unable to export history.', 'error');
         })
         .finally(cleanup);
@@ -386,7 +386,7 @@ function injectUI() {
       setStatus('History export started.', 'success');
       setTimeout(cleanup, 2000);
     } catch (err) {
-      console.error('OntoPrompt: history export failed', err);
+      console.error('SPARQLPrompt: history export failed', err);
       fallbackToClipboard();
     }
   };
@@ -511,7 +511,7 @@ function injectUI() {
         renderHistory();
         setStatus(`Imported ${newEntries.length} history ${newEntries.length === 1 ? 'entry' : 'entries'}.`, 'success');
       } catch (err) {
-        console.error('OntoPrompt: failed to import history', err);
+        console.error('SPARQLPrompt: failed to import history', err);
         setStatus('Failed to parse history file. Please check the file format.', 'error');
       }
     };
@@ -613,7 +613,7 @@ function injectUI() {
     e.stopPropagation();
     e.preventDefault();
     if (!contextHelpTooltip) {
-      console.error('OntoPrompt: context help tooltip not found');
+      console.error('SPARQLPrompt: context help tooltip not found');
       return;
     }
     const isHidden = contextHelpTooltip.hasAttribute('hidden');
