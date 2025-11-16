@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
   "name": "SPARQLPrompt",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "description": "Converts natural language to SPARQL using OpenAI.",
   "permissions": ["storage", "scripting", "activeTab", "downloads"],
-  "host_permissions": ["https://yasgui.triply.cc/*"],
+  "host_permissions": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://yasgui.triply.cc/*"],
+      "matches": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"],
       "js": ["content.js"],
       "css": ["styles.css"]
     }
@@ -19,7 +19,7 @@
     "default_popup": "popup.html"
   },
   "icons": {
-    "128": "icons/ontoprompt_icon_128.png"
+    "128": "icons/sparqlprompt_icon_128.png"
   },
   "web_accessible_resources": [
     {
@@ -28,7 +28,7 @@
         "css/github.min.css",
         "js/pasteBridge.js"
       ],
-      "matches": ["https://yasgui.triply.cc/*"]
+      "matches": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"]
     }
   ]
 }
