@@ -77,6 +77,6 @@ SPARQLPrompt uses the OpenAI API to generate SPARQL queries. Each query generati
 4. Locate the SPARQLPrompt card and click the **Reload** button (circular arrow) in the card’s upper-right corner (see the screenshot below).
 5. If the SPARQLPrompt window is already open in a YASGUI tab, refresh the page to update the SPARQLPrompt extension.
 
-![Chrome extension reload button](icons/SPARQLPrompt_reload_button.png)
+![Chrome extension reload button](icons/sparqlprompt_reload_button.png)
 
 **Note:** This Extension is under development and is not yet available in the Chrome Web Store.
