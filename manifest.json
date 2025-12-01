@@ -3,16 +3,33 @@
   "name": "SPARQLPrompt",
   "version": "0.5.0",
   "description": "Converts natural language to SPARQL using OpenAI.",
-  "permissions": ["storage", "scripting", "activeTab", "downloads"],
-  "host_permissions": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"],
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://yasgui.triply.cc/*",
+    "https://yasgui.org/*",
+    "http://localhost:8080/yasgui.html"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
+      "matches": [
+        "https://yasgui.triply.cc/*",
+        "https://yasgui.org/*",
+        "http://localhost:8080/yasgui.html"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
     }
   ],
   "action": {
@@ -28,7 +45,11 @@
         "css/github.min.css",
         "js/pasteBridge.js"
       ],
-      "matches": ["https://yasgui.triply.cc/*", "https://yasgui.org/*"]
+      "matches": [
+        "https://yasgui.triply.cc/*",
+        "https://yasgui.org/*",
+        "http://localhost:8080/*"
+      ]
     }
   ]
 }
