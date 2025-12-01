@@ -11,14 +11,119 @@
   max-width: calc(100vw - 60px);
   min-width: 540px;
   max-height: 560px;
-  overflow-y: auto;
+  overflow-y: scroll;
+  /* Always have scrollbar space */
   font-family: sans-serif;
   box-sizing: border-box;
+  transition: max-height 0.2s ease-out, padding 0.2s ease-out;
+}
+
+/* Collapsed/minimized state */
+.nl-to-sparql-box.is-collapsed {
+  max-height: 52px;
+  padding: 16px;
+  /* Keep overflow-y: scroll to maintain width, but hide scrollbar visually */
+}
+
+/* Hide scrollbar visually when collapsed (but keep the space) */
+.nl-to-sparql-box.is-collapsed::-webkit-scrollbar {
+  background: transparent;
+}
+
+.nl-to-sparql-box.is-collapsed::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.nl-to-sparql-box.is-collapsed::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Content elements that get hidden when collapsed */
+.nl-to-sparql-box .nl-input,
+.nl-to-sparql-box .nl-context-section,
+.nl-to-sparql-box .nl-controls,
+.nl-to-sparql-box .nl-output,
+.nl-to-sparql-box .nl-history,
+.nl-to-sparql-box .nl-footer,
+.nl-to-sparql-box .nl-divider,
+.nl-to-sparql-box .nl-model-label,
+.nl-to-sparql-box .nl-model-select,
+.nl-to-sparql-box .nl-context-label,
+.nl-to-sparql-box .nl-status {
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+
+.nl-to-sparql-box.is-collapsed .nl-input,
+.nl-to-sparql-box.is-collapsed .nl-context-section,
+.nl-to-sparql-box.is-collapsed .nl-controls,
+.nl-to-sparql-box.is-collapsed .nl-output,
+.nl-to-sparql-box.is-collapsed .nl-history,
+.nl-to-sparql-box.is-collapsed .nl-footer,
+.nl-to-sparql-box.is-collapsed .nl-divider,
+.nl-to-sparql-box.is-collapsed .nl-model-label,
+.nl-to-sparql-box.is-collapsed .nl-model-select,
+.nl-to-sparql-box.is-collapsed .nl-context-label,
+.nl-to-sparql-box.is-collapsed .nl-status {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease-out, visibility 0s linear 0.1s;
 }
 
 .nl-to-sparql-box__title {
   font-weight: 600;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nl-to-sparql-box__title-text {
+  flex: 1;
+}
+
+.nl-minimize-btn {
+  appearance: none;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* No transition for state change - instant feedback feels more responsive */
+  /* Hover transitions are handled separately */
+  flex-shrink: 0;
+}
+
+.nl-minimize-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #1f2937;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.nl-minimize-btn:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.nl-to-sparql-box.is-collapsed .nl-minimize-btn {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.nl-to-sparql-box.is-collapsed .nl-minimize-btn:hover {
+  background: #1d4ed8;
 }
 
 .nl-drag-handle {
@@ -207,14 +312,16 @@
 }
 
 .nl-model-label {
-  display: none; /* Hidden when only one model is available */
+  display: none;
+  /* Hidden when only one model is available */
   font-size: 0.85rem;
   color: #374151;
   margin: 6px 0 4px;
 }
 
 .nl-model-select {
-  display: none; /* Hidden when only one model is available */
+  display: none;
+  /* Hidden when only one model is available */
   width: 100%;
   padding: 6px 10px;
   border-radius: 6px;
@@ -299,9 +406,11 @@
   0% {
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
   }
+
   70% {
     box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
   }
@@ -529,6 +638,7 @@
 .nl-history-button[data-action="paste"]:hover:not(:disabled) {
   background: #1d4ed8;
 }
+
 .nl-loading {
   display: flex;
   align-items: center;

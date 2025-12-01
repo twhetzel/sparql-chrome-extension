@@ -123,7 +123,12 @@ function injectUI() {
   box.id = 'nl-to-sparql-box';
   box.className = 'nl-to-sparql-box';
   box.innerHTML = `
-    <div class="nl-to-sparql-box__title">Ask your SPARQL query:</div>
+    <div class="nl-to-sparql-box__title nl-drag-handle">
+      <span class="nl-to-sparql-box__title-text">Ask your SPARQL query:</span>
+      <button type="button" class="nl-minimize-btn" aria-label="Minimize panel" title="Minimize">
+        <span class="nl-minimize-icon" aria-hidden="true">−</span>
+      </button>
+    </div>
     <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
     <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
     <select id="nl-model-select" class="nl-model-select">
@@ -675,7 +680,81 @@ function injectUI() {
   });
 
   const dragHandle = box.querySelector('.nl-to-sparql-box__title');
-  dragHandle.classList.add('nl-drag-handle');
+  // nl-drag-handle class is now added in HTML
+
+  // Minimize/collapse functionality
+  const minimizeBtn = box.querySelector('.nl-minimize-btn');
+  const minimizeIcon = box.querySelector('.nl-minimize-icon');
+  let positionBeforeCollapse = null; // Store position before minimizing
+
+  const anchorToBottomRight = () => {
+    // Use right/bottom positioning for anchoring
+    // Clear any left/top that might interfere
+    box.style.left = 'auto';
+    box.style.top = 'auto';
+    box.style.right = '30px';
+    box.style.bottom = '30px';
+  };
+
+  const restorePositionAfterExpand = () => {
+    if (positionBeforeCollapse) {
+      box.style.left = `${positionBeforeCollapse.left}px`;
+      box.style.top = `${positionBeforeCollapse.top}px`;
+      box.style.right = 'auto';
+      box.style.bottom = 'auto';
+    } else {
+      // If no saved position, anchor to bottom-right in expanded state too
+      anchorToBottomRight();
+    }
+  };
+
+  const toggleCollapsed = (collapsed, isInitialLoad = false) => {
+    if (collapsed) {
+      // Save current position before collapsing (unless it's initial load)
+      if (!isInitialLoad) {
+        const rect = box.getBoundingClientRect();
+        const currentLeft = parseFloat(box.style.left);
+        const currentTop = parseFloat(box.style.top);
+        if (!Number.isNaN(currentLeft) && !Number.isNaN(currentTop)) {
+          positionBeforeCollapse = { left: currentLeft, top: currentTop };
+        } else {
+          // Calculate from bounding rect if using right/bottom positioning
+          positionBeforeCollapse = { left: rect.left, top: rect.top };
+        }
+        chrome.storage.local.set({ nl_panel_position_before_collapse: positionBeforeCollapse });
+      }
+
+      box.classList.add('is-collapsed');
+      minimizeIcon.textContent = '+';
+      minimizeBtn.setAttribute('aria-label', 'Expand panel');
+      minimizeBtn.setAttribute('title', 'Expand');
+      anchorToBottomRight();
+    } else {
+      box.classList.remove('is-collapsed');
+      minimizeIcon.textContent = '−';
+      minimizeBtn.setAttribute('aria-label', 'Minimize panel');
+      minimizeBtn.setAttribute('title', 'Minimize');
+      restorePositionAfterExpand();
+    }
+  };
+
+  minimizeBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const isCollapsed = !box.classList.contains('is-collapsed');
+    toggleCollapsed(isCollapsed);
+    chrome.storage.local.set({ nl_panel_collapsed: isCollapsed });
+  });
+
+  // Restore collapsed state and saved position on load
+  chrome.storage.local.get(['nl_panel_collapsed', 'nl_panel_position_before_collapse'], (result) => {
+    if (result.nl_panel_position_before_collapse) {
+      positionBeforeCollapse = result.nl_panel_position_before_collapse;
+    }
+    if (result.nl_panel_collapsed) {
+      toggleCollapsed(true, true);
+    }
+  });
   const dragState = {
     active: false,
     pointerId: null,
@@ -707,10 +786,20 @@ function injectUI() {
 
   const savePosition = (left, top) => {
     chrome.storage.local.set({ nl_panel_position: { left, top } });
+    // Also update positionBeforeCollapse so next collapse/expand cycle uses this position
+    if (!box.classList.contains('is-collapsed')) {
+      positionBeforeCollapse = { left, top };
+      chrome.storage.local.set({ nl_panel_position_before_collapse: positionBeforeCollapse });
+    }
   };
 
   const loadPosition = () => {
-    chrome.storage.local.get(['nl_panel_position'], ({ nl_panel_position: saved }) => {
+    chrome.storage.local.get(['nl_panel_position', 'nl_panel_collapsed'], (result) => {
+      // Don't load position if panel is collapsed (it should stay anchored to bottom-right)
+      if (result.nl_panel_collapsed) {
+        return;
+      }
+      const saved = result.nl_panel_position;
       if (!saved || typeof saved.left !== 'number' || typeof saved.top !== 'number') {
         return;
       }
@@ -747,6 +836,8 @@ function injectUI() {
 
   dragHandle.addEventListener('pointerdown', event => {
     if (event.button !== 0 && event.pointerType !== 'touch') return;
+    // Don't start dragging if clicking the minimize button
+    if (event.target.closest('.nl-minimize-btn')) return;
     const rect = box.getBoundingClientRect();
     dragState.active = true;
     dragState.pointerId = event.pointerId;
@@ -765,6 +856,10 @@ function injectUI() {
   loadPosition();
 
   window.addEventListener('resize', () => {
+    // Don't adjust position when collapsed - it stays anchored to bottom-right via CSS
+    if (box.classList.contains('is-collapsed')) {
+      return;
+    }
     const currentLeft = parseFloat(box.style.left);
     const currentTop = parseFloat(box.style.top);
     if (Number.isNaN(currentLeft) || Number.isNaN(currentTop)) {
