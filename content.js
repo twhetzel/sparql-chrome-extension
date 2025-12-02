@@ -30,13 +30,7 @@ function stripMarkdownFences(text) {
   const lines = trimmed.split('\n');
 
   // Find the start of the actual query (first line with SPARQL keywords)
-  let queryStart = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (sparqlStartKeywords.test(lines[i])) {
-      queryStart = i;
-      break;
-    }
-  }
+  let queryStart = lines.findIndex(line => sparqlStartKeywords.test(line));
 
   // If we found a SPARQL keyword, extract from there to the end
   // Otherwise, return the whole text (might already be just the query)
