@@ -12,15 +12,64 @@ function escapeHtml(text) {
 function stripMarkdownFences(text) {
   if (!text) return '';
   let trimmed = text.trim();
-  const fenceStart = /^```[\w-]*\s*/;
-  const fenceEnd = /```$/;
-  if (fenceStart.test(trimmed)) {
-    trimmed = trimmed.replace(fenceStart, '');
+
+  // First, try to extract content from markdown code blocks
+  // Match: ```sparql ... ``` or ``` ... ```
+  const markdownBlockMatch = trimmed.match(/```(?:\w+)?\s*\n?([\s\S]*?)```/);
+  if (markdownBlockMatch) {
+    trimmed = markdownBlockMatch[1].trim();
+  } else {
+    // Remove leading/trailing fences if present
+    const fenceStart = /^```[\w-]*\s*/;
+    const fenceEnd = /```$/;
+    trimmed = trimmed.replace(fenceStart, '').replace(fenceEnd, '').trim();
   }
-  if (fenceEnd.test(trimmed)) {
-    trimmed = trimmed.replace(fenceEnd, '');
+
+  // SPARQL keywords that indicate the start of a query
+  const sparqlStartKeywords = /\b(SELECT|ASK|CONSTRUCT|DESCRIBE|INSERT|DELETE|PREFIX|BASE)\b/i;
+  const lines = trimmed.split('\n');
+
+  // Find the start of the actual query (first line with SPARQL keywords)
+  let queryStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (sparqlStartKeywords.test(lines[i])) {
+      queryStart = i;
+      break;
+    }
   }
-  return trimmed.trim();
+
+  // If we found a SPARQL keyword, extract from there to the end
+  // Otherwise, return the whole text (might already be just the query)
+  if (queryStart >= 0) {
+    trimmed = lines.slice(queryStart).join('\n').trim();
+
+    // Try to find where explanatory text starts after the query
+    // Look for patterns that suggest the query has ended
+    const explanationPatterns = /^\s*(Note|This|That|The query|The SPARQL|Explanation|Here'?s|For|This query)/i;
+    const queryLines = trimmed.split('\n');
+    let queryEnd = queryLines.length;
+
+    for (let i = 1; i < queryLines.length; i++) {
+      const line = queryLines[i].trim();
+      // If we hit a blank line followed by explanatory text, stop there
+      if (line === '' && i + 1 < queryLines.length && explanationPatterns.test(queryLines[i + 1])) {
+        queryEnd = i;
+        break;
+      }
+      // If a line starts with explanatory text, stop before it
+      if (line && explanationPatterns.test(line)) {
+        queryEnd = i;
+        break;
+      }
+    }
+
+    trimmed = queryLines.slice(0, queryEnd).join('\n').trim();
+  }
+
+  // Remove any remaining explanatory prefixes/suffixes
+  trimmed = trimmed.replace(/^(?:here'?s?|the|a)?\s*(?:sparql\s+)?query\s*[:\-–—]\s*/i, '');
+
+  return trimmed;
 }
 
 function getGeneratedQuery() {
@@ -129,6 +178,7 @@ function injectUI() {
         <span class="nl-minimize-icon" aria-hidden="true">−</span>
       </button>
     </div>
+    <div class="nl-to-sparql-box__content">
     <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
     <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
     <select id="nl-model-select" class="nl-model-select">
@@ -184,6 +234,7 @@ function injectUI() {
       <p id="nl-history-empty" class="nl-history-empty">No history yet.</p>
       <div id="nl-history-list" class="nl-history-list" role="list"></div>
     </section>
+    </div>
   `;
   document.body.appendChild(box);
 
@@ -974,7 +1025,7 @@ function injectUI() {
               body: JSON.stringify({
                 model: selectedModel,
                 messages: [
-                  { role: 'system', content: 'You are an expert at writing SPARQL queries.' },
+                  { role: 'system', content: 'You are an expert at writing SPARQL queries. You must return ONLY the SPARQL query code with no explanatory text, no comments, and no markdown formatting. Return the raw query only.' },
                   { role: 'user', content: userContent }
                 ],
                 max_tokens: 1024,
