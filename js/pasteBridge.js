@@ -61,9 +61,93 @@
     return false;
   }
 
+  function tryPasteIntoFrink(root, query) {
+    if (!root) return false;
+
+    // Look for textarea or input with SPARQL-related identifiers
+    const selectors = [
+      'textarea[placeholder*="SPARQL" i]',
+      'textarea[placeholder*="Query" i]',
+      'textarea[id*="sparql" i]',
+      'textarea[id*="query" i]',
+      'textarea[name*="sparql" i]',
+      'textarea[name*="query" i]',
+      'textarea[class*="sparql" i]',
+      'textarea[class*="query" i]'
+    ];
+
+    // Try each selector
+    for (const selector of selectors) {
+      try {
+        const element = root.querySelector(selector);
+        if (element && (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT')) {
+          element.value = query;
+          element.focus();
+          // Trigger input and change events to notify the page
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        }
+      } catch (e) {
+        // Continue trying other selectors
+      }
+    }
+
+    // Fallback: Find by label text
+    const labels = root.querySelectorAll('label');
+    for (const label of labels) {
+      const labelText = (label.textContent || '').toLowerCase();
+      if (labelText.includes('sparql') && labelText.includes('query')) {
+        const forAttr = label.getAttribute('for');
+        if (forAttr) {
+          const target = root.getElementById(forAttr);
+          if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+            target.value = query;
+            target.focus();
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+        }
+        // If no 'for' attribute, look for next sibling textarea
+        let next = label.nextElementSibling;
+        while (next) {
+          if (next.tagName === 'TEXTAREA' || next.tagName === 'INPUT') {
+            next.value = query;
+            next.focus();
+            next.dispatchEvent(new Event('input', { bubbles: true }));
+            next.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+          next = next.nextElementSibling;
+        }
+        // Also check for textarea within the same parent or nearby
+        const parent = label.parentElement;
+        if (parent) {
+          const nearbyTextarea = parent.querySelector('textarea, input[type="text"]');
+          if (nearbyTextarea) {
+            nearbyTextarea.value = query;
+            nearbyTextarea.focus();
+            nearbyTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            nearbyTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   function tryPaste(query) {
+    // Try YASGUI methods first (maintains existing functionality)
     if (focusYasqe(resolveYasqeInstance(), query)) return true;
     if (tryPasteIntoDom(document, query)) return true;
+
+    // Try frink-query-ui page
+    if (tryPasteIntoFrink(document, query)) return true;
+
+    // Continue with existing fallbacks
     const altContainer = document.querySelector('#g4hwvd > div > div:nth-child(2) > div');
     if (altContainer && tryPasteIntoDom(altContainer, query)) return true;
     const iframe = document.querySelector('iframe');
@@ -72,6 +156,7 @@
         const iframeWindow = iframe.contentWindow;
         if (focusYasqe(iframeWindow.yasqe || iframeWindow.YASQE, query)) return true;
         if (tryPasteIntoDom(iframeWindow.document, query)) return true;
+        if (tryPasteIntoFrink(iframeWindow.document, query)) return true;
       } catch (err) {
         console.warn('NL-to-SPARQL paste bridge: unable to access iframe contents', err);
       }
@@ -88,7 +173,7 @@
     try {
       success = tryPaste(query);
       if (!success) {
-        error = 'Could not locate the YASGUI editor.';
+        error = 'Could not locate the SPARQL query editor.';
       }
     } catch (err) {
       error = err && err.message ? err.message : String(err);

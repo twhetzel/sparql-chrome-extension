@@ -12,7 +12,8 @@
   "host_permissions": [
     "https://yasgui.triply.cc/*",
     "https://yasgui.org/*",
-    "http://localhost:8080/yasgui.html"
+    "http://localhost:8080/yasgui.html",
+    "https://frink-okn.github.io/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,7 +23,8 @@
       "matches": [
         "https://yasgui.triply.cc/*",
         "https://yasgui.org/*",
-        "http://localhost:8080/yasgui.html"
+        "http://localhost:8080/yasgui.html",
+        "https://frink-okn.github.io/*"
       ],
       "js": [
         "content.js"
@@ -48,7 +50,8 @@
       "matches": [
         "https://yasgui.triply.cc/*",
         "https://yasgui.org/*",
-        "http://localhost:8080/*"
+        "http://localhost:8080/*",
+        "https://frink-okn.github.io/*"
       ]
     }
   ]

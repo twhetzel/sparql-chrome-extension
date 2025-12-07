@@ -205,7 +205,7 @@ function injectUI() {
       <button id="nl-submit" class="nl-button nl-button--primary">Convert</button>
       <button id="nl-clear" class="nl-button">Clear</button>
       <button id="nl-copy" class="nl-button">Copy</button>
-      <button id="nl-paste" class="nl-button">Paste to YASGUI</button>
+      <button id="nl-paste" class="nl-button">Paste Query</button>
       <button id="nl-reset-position" class="nl-button">Reset Position</button>
     </div>
     <div id="sparql-output" class="nl-output"></div>
@@ -494,10 +494,10 @@ function injectUI() {
     if (triggerButton) {
       triggerButton.disabled = true;
     }
-    setStatus('Pasting history query into YASGUI…', 'info');
+    setStatus('Pasting history query…', 'info');
     insertIntoYasgui(entry.query)
       .then(() => {
-        setStatus('History query pasted into YASGUI.', 'success');
+        setStatus('History query pasted successfully.', 'success');
         getPasteButton()?.classList.remove('nl-button--highlight');
       })
       .catch(err => {
@@ -949,18 +949,18 @@ function injectUI() {
   document.getElementById('nl-paste').onclick = async () => {
     const query = getGeneratedQuery();
     if (!query) {
-      setStatus('Generate a query before pasting into YASGUI.', 'error');
+      setStatus('Generate a query before pasting.', 'error');
       return;
     }
     const pasteButton = document.getElementById('nl-paste');
     pasteButton.disabled = true;
-    setStatus('Pasting into YASGUI…', 'info');
+    setStatus('Pasting query…', 'info');
     try {
       await insertIntoYasgui(query);
-      setStatus('Query pasted into YASGUI.', 'success');
+      setStatus('Query pasted successfully.', 'success');
       pasteButton.classList.remove('nl-button--highlight');
     } catch (err) {
-      setStatus(err.message || 'Unable to paste into YASGUI.', 'error');
+      setStatus(err.message || 'Unable to paste query.', 'error');
     } finally {
       pasteButton.disabled = false;
     }
