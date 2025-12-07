@@ -173,7 +173,17 @@ function injectUI() {
       </button>
     </div>
     <div class="nl-to-sparql-box__content">
-    <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
+    <div class="nl-input-wrapper">
+      <textarea id="nl-input" class="nl-input" rows="3" placeholder="Describe the query you need…"></textarea>
+      <div class="nl-input-actions">
+        <button type="button" id="nl-voice-btn" class="nl-voice-btn" aria-label="Start voice input" title="Start voice input">
+          <span class="nl-voice-icon" aria-hidden="true">🎤</span>
+        </button>
+        <button type="button" id="nl-input-clear" class="nl-input-clear-btn" aria-label="Clear input" title="Clear input" style="display: none;">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+    </div>
     <label class="nl-model-label" for="nl-model-select">OpenAI model</label>
     <select id="nl-model-select" class="nl-model-select">
       <option value="gpt-4.1">gpt-4.1</option>
@@ -233,6 +243,156 @@ function injectUI() {
   document.body.appendChild(box);
 
   const textarea = document.getElementById('nl-input');
+
+  // Voice input functionality - declare variables first
+  const voiceBtn = document.getElementById('nl-voice-btn');
+  let recognition = null;
+  let isRecording = false;
+  let recordingStartPosition = 0;
+  let currentInterimLength = 0;
+
+  // Stop recording function (accessible from anywhere) - declare early
+  const stopRecording = () => {
+    if (isRecording && recognition) {
+      isRecording = false;
+      try {
+        recognition.stop();
+      } catch (err) {
+        // Ignore errors when stopping
+      }
+      voiceBtn.classList.remove('is-recording');
+      voiceBtn.setAttribute('aria-label', 'Start voice input');
+      voiceBtn.setAttribute('title', 'Start voice input');
+      setStatus('', 'info');
+      // Reset tracking variables
+      recordingStartPosition = 0;
+      currentInterimLength = 0;
+    }
+  };
+
+  // Clear input button (show/hide based on content)
+  const inputClearBtn = document.getElementById('nl-input-clear');
+  const updateInputClearVisibility = () => {
+    inputClearBtn.style.display = textarea.value.trim() ? 'flex' : 'none';
+  };
+
+  textarea.addEventListener('input', updateInputClearVisibility);
+  updateInputClearVisibility(); // Initial check
+
+  inputClearBtn.addEventListener('click', () => {
+    textarea.value = '';
+    textarea.focus();
+    updateInputClearVisibility();
+    // Also stop voice recording if active
+    stopRecording();
+  });
+
+  // Check for browser support
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true; // Keep listening
+    recognition.interimResults = true; // Show interim results
+    recognition.lang = 'en-US';
+
+
+    recognition.onstart = () => {
+      isRecording = true;
+      voiceBtn.classList.add('is-recording');
+      voiceBtn.setAttribute('aria-label', 'Stop voice input');
+      voiceBtn.setAttribute('title', 'Stop voice input');
+      setStatus('Listening...', 'info');
+      // Store where we started recording (current cursor position)
+      recordingStartPosition = textarea.selectionStart;
+      currentInterimLength = 0;
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Calculate the end of the recording area (where we started + what we've recorded so far)
+      const recordingEndPosition = recordingStartPosition + currentInterimLength;
+
+      // Get text before and after the recording area
+      const textBefore = textarea.value.substring(0, recordingStartPosition);
+      const textAfter = textarea.value.substring(recordingEndPosition);
+
+      // Build new value: existing text before + all final transcripts + current interim (if any)
+      let newValue = textBefore + finalTranscript;
+      if (interimTranscript) {
+        newValue += interimTranscript;
+      }
+      newValue += textAfter;
+
+      // Update textarea with the new value
+      textarea.value = newValue;
+
+      // Update tracking: move start position forward by finalized text, track new interim length
+      if (finalTranscript) {
+        recordingStartPosition += finalTranscript.length;
+      }
+      currentInterimLength = interimTranscript.length;
+
+      // Set cursor at the end of the transcribed text (after final + interim)
+      const cursorPos = recordingStartPosition + currentInterimLength;
+      textarea.selectionStart = textarea.selectionEnd = cursorPos;
+
+      // Update clear button visibility when text changes
+      updateInputClearVisibility();
+
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'no-speech') {
+        setStatus('No speech detected. Try again.', 'error');
+      } else if (event.error === 'not-allowed') {
+        setStatus('Microphone permission denied. Please allow microphone access.', 'error');
+      } else if (event.error === 'aborted') {
+        // User stopped recording, don't show error
+        return;
+      } else {
+        setStatus(`Voice input error: ${event.error}`, 'error');
+      }
+      stopRecording();
+    };
+
+    recognition.onend = () => {
+      stopRecording();
+    };
+
+    const startRecording = () => {
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error('Failed to start recognition:', err);
+        setStatus('Unable to start voice input.', 'error');
+      }
+    };
+
+    voiceBtn.addEventListener('click', () => {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+  } else {
+    // Browser doesn't support speech recognition
+    voiceBtn.style.display = 'none';
+  }
 
   const contextTextarea = document.getElementById('nl-context-input');
   const contextFileInput = document.getElementById('nl-context-file');
@@ -983,6 +1143,9 @@ function injectUI() {
   let convertInProgress = false;
 
   document.getElementById('nl-submit').onclick = () => {
+    // Stop voice recording if active
+    stopRecording();
+
     const prompt = textarea.value.trim();
     if (!prompt) {
       setStatus('Please describe the query you need before converting.', 'error');
