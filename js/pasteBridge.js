@@ -61,31 +61,41 @@
     return false;
   }
 
+  function pasteIntoElement(element, query) {
+    if (!element || !['TEXTAREA', 'INPUT'].includes(element.tagName)) {
+      return false;
+    }
+    element.value = query;
+    element.focus();
+    // Trigger input and change events to notify the page
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+
   function tryPasteIntoFrink(root, query) {
     if (!root) return false;
 
     // Look for textarea or input with SPARQL-related identifiers
     const selectors = [
-      'textarea[placeholder*="SPARQL" i]',
-      'textarea[placeholder*="Query" i]',
-      'textarea[id*="sparql" i]',
-      'textarea[id*="query" i]',
-      'textarea[name*="sparql" i]',
-      'textarea[name*="query" i]',
-      'textarea[class*="sparql" i]',
-      'textarea[class*="query" i]'
-    ];
+      ['placeholder', 'SPARQL'],
+      ['placeholder', 'Query'],
+      ['id', 'sparql'],
+      ['id', 'query'],
+      ['name', 'sparql'],
+      ['name', 'query'],
+      ['class', 'sparql'],
+      ['class', 'query'],
+    ].flatMap(([attr, keyword]) => [
+      `textarea[${attr}*="${keyword}" i]`,
+      `input[${attr}*="${keyword}" i]`,
+    ]);
 
     // Try each selector
     for (const selector of selectors) {
       try {
         const element = root.querySelector(selector);
-        if (element && (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT')) {
-          element.value = query;
-          element.focus();
-          // Trigger input and change events to notify the page
-          element.dispatchEvent(new Event('input', { bubbles: true }));
-          element.dispatchEvent(new Event('change', { bubbles: true }));
+        if (pasteIntoElement(element, query)) {
           return true;
         }
       } catch (e) {
@@ -101,35 +111,24 @@
         const forAttr = label.getAttribute('for');
         if (forAttr) {
           const target = root.getElementById(forAttr);
-          if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-            target.value = query;
-            target.focus();
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-            target.dispatchEvent(new Event('change', { bubbles: true }));
+          if (pasteIntoElement(target, query)) {
             return true;
           }
         }
         // If no 'for' attribute, look for next sibling textarea
         let next = label.nextElementSibling;
         while (next) {
-          if (next.tagName === 'TEXTAREA' || next.tagName === 'INPUT') {
-            next.value = query;
-            next.focus();
-            next.dispatchEvent(new Event('input', { bubbles: true }));
-            next.dispatchEvent(new Event('change', { bubbles: true }));
+          if (pasteIntoElement(next, query)) {
             return true;
           }
           next = next.nextElementSibling;
         }
-        // Also check for textarea within the same parent or nearby
+        // Last resort: check parent for textarea/input, but only if there's exactly one
+        // This avoids selecting the wrong field when multiple form fields exist
         const parent = label.parentElement;
         if (parent) {
-          const nearbyTextarea = parent.querySelector('textarea, input[type="text"]');
-          if (nearbyTextarea) {
-            nearbyTextarea.value = query;
-            nearbyTextarea.focus();
-            nearbyTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            nearbyTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+          const allInputs = parent.querySelectorAll('textarea, input[type="text"]');
+          if (allInputs.length === 1 && pasteIntoElement(allInputs[0], query)) {
             return true;
           }
         }
