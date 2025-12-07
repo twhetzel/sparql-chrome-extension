@@ -78,23 +78,18 @@
 
     // Look for textarea or input with SPARQL-related identifiers
     const selectors = [
-      'textarea[placeholder*="SPARQL" i]',
-      'input[placeholder*="SPARQL" i]',
-      'textarea[placeholder*="Query" i]',
-      'input[placeholder*="Query" i]',
-      'textarea[id*="sparql" i]',
-      'input[id*="sparql" i]',
-      'textarea[id*="query" i]',
-      'input[id*="query" i]',
-      'textarea[name*="sparql" i]',
-      'input[name*="sparql" i]',
-      'textarea[name*="query" i]',
-      'input[name*="query" i]',
-      'textarea[class*="sparql" i]',
-      'input[class*="sparql" i]',
-      'textarea[class*="query" i]',
-      'input[class*="query" i]'
-    ];
+      ['placeholder', 'SPARQL'],
+      ['placeholder', 'Query'],
+      ['id', 'sparql'],
+      ['id', 'query'],
+      ['name', 'sparql'],
+      ['name', 'query'],
+      ['class', 'sparql'],
+      ['class', 'query'],
+    ].flatMap(([attr, keyword]) => [
+      `textarea[${attr}*="${keyword}" i]`,
+      `input[${attr}*="${keyword}" i]`,
+    ]);
 
     // Try each selector
     for (const selector of selectors) {
