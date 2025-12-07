@@ -62,7 +62,7 @@
   }
 
   function pasteIntoElement(element, query) {
-    if (!element || (element.tagName !== 'TEXTAREA' && element.tagName !== 'INPUT')) {
+    if (!element || !['TEXTAREA', 'INPUT'].includes(element.tagName)) {
       return false;
     }
     element.value = query;
