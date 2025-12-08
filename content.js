@@ -310,16 +310,17 @@ function injectUI() {
 
     recognition.onresult = (event) => {
       let interimTranscript = '';
-      let finalTranscript = '';
+      const finalParts = [];
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
+          finalParts.push(transcript);
         } else {
           interimTranscript += transcript;
         }
       }
+      const finalTranscript = finalParts.join(' ');
 
       // Calculate the end of the recording area (where we started + what we've recorded so far)
       const recordingEndPosition = recordingStartPosition + currentInterimLength;
