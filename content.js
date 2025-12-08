@@ -60,7 +60,36 @@ class VoiceInputHandler {
     this.voiceBtn.setAttribute('aria-label', 'Stop voice input');
     this.voiceBtn.setAttribute('title', 'Stop voice input');
     this.setStatus('Listening...', 'info');
-    this.recordingStartPosition = this.textarea.selectionStart;
+
+    // Ensure we capture the cursor position correctly
+    // If cursor is at the start (0) but there's existing text, move to end
+    const currentCursor = this.textarea.selectionStart;
+    const hasText = this.textarea.value.trim().length > 0;
+
+    if (currentCursor === 0 && hasText) {
+      // Cursor is at start but there's text - move to end for appending
+      this.textarea.focus();
+      const endPos = this.textarea.value.length;
+      this.textarea.setSelectionRange(endPos, endPos);
+      this.recordingStartPosition = endPos;
+    } else {
+      // Use current cursor position
+      this.recordingStartPosition = currentCursor;
+    }
+
+    // Add a space before new voice input if there's existing text at the insertion point
+    if (this.recordingStartPosition > 0) {
+      const charBefore = this.textarea.value[this.recordingStartPosition - 1];
+      // Only add space if the character before is not already a space or newline
+      if (charBefore && charBefore !== ' ' && charBefore !== '\n') {
+        const textBefore = this.textarea.value.substring(0, this.recordingStartPosition);
+        const textAfter = this.textarea.value.substring(this.recordingStartPosition);
+        this.textarea.value = textBefore + ' ' + textAfter;
+        this.recordingStartPosition += 1; // Adjust position to account for the space we added
+        this.textarea.setSelectionRange(this.recordingStartPosition, this.recordingStartPosition);
+      }
+    }
+
     this.currentInterimLength = 0;
   }
 
@@ -77,6 +106,17 @@ class VoiceInputHandler {
       }
     }
     const finalTranscript = finalParts.join(' ');
+
+    // On first result in this recording session, verify and correct the insertion position
+    // This ensures we insert at the current cursor position, not an old/stale position
+    if (event.resultIndex === 0 && this.currentInterimLength === 0) {
+      const currentCursor = this.textarea.selectionStart;
+      const textLength = this.textarea.value.length;
+
+      // Always use the current cursor position for new recording sessions
+      // This ensures text is inserted where the user expects it
+      this.recordingStartPosition = currentCursor;
+    }
 
     // Calculate the end of the recording area
     const recordingEndPosition = this.recordingStartPosition + this.currentInterimLength;
