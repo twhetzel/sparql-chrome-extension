@@ -9,6 +9,156 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+/**
+ * VoiceInputHandler - Manages speech recognition for voice input
+ */
+class VoiceInputHandler {
+  constructor(textarea, voiceBtn, setStatus, updateClearVisibility) {
+    this.textarea = textarea;
+    this.voiceBtn = voiceBtn;
+    this.setStatus = setStatus;
+    this.updateClearVisibility = updateClearVisibility;
+
+    this.recognition = null;
+    this.isRecording = false;
+    this.recordingStartPosition = 0;
+    this.currentInterimLength = 0;
+
+    this.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (this.SpeechRecognition) {
+      this.init();
+    } else {
+      // Browser doesn't support speech recognition
+      this.voiceBtn.style.display = 'none';
+    }
+  }
+
+  init() {
+    this.recognition = new this.SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+
+    this.recognition.onstart = () => this.handleStart();
+    this.recognition.onresult = (event) => this.handleResult(event);
+    this.recognition.onerror = (event) => this.handleError(event);
+    this.recognition.onend = () => this.handleEnd();
+
+    this.voiceBtn.addEventListener('click', () => {
+      if (this.isRecording) {
+        this.stop();
+      } else {
+        this.start();
+      }
+    });
+  }
+
+  handleStart() {
+    this.isRecording = true;
+    this.voiceBtn.classList.add('is-recording');
+    this.voiceBtn.setAttribute('aria-label', 'Stop voice input');
+    this.voiceBtn.setAttribute('title', 'Stop voice input');
+    this.setStatus('Listening...', 'info');
+    this.recordingStartPosition = this.textarea.selectionStart;
+    this.currentInterimLength = 0;
+  }
+
+  handleResult(event) {
+    let interimTranscript = '';
+    const finalParts = [];
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalParts.push(transcript);
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+    const finalTranscript = finalParts.join(' ');
+
+    // Calculate the end of the recording area
+    const recordingEndPosition = this.recordingStartPosition + this.currentInterimLength;
+
+    // Get text before and after the recording area
+    const textBefore = this.textarea.value.substring(0, this.recordingStartPosition);
+    const textAfter = this.textarea.value.substring(recordingEndPosition);
+
+    // Build new value: existing text before + all final transcripts + current interim (if any)
+    let newValue = textBefore + finalTranscript;
+    if (interimTranscript) {
+      newValue += interimTranscript;
+    }
+    newValue += textAfter;
+
+    // Update textarea with the new value
+    this.textarea.value = newValue;
+
+    // Update tracking: move start position forward by finalized text, track new interim length
+    if (finalTranscript) {
+      this.recordingStartPosition += finalTranscript.length;
+    }
+    this.currentInterimLength = interimTranscript.length;
+
+    // Set cursor at the end of the transcribed text (after final + interim)
+    const cursorPos = this.recordingStartPosition + this.currentInterimLength;
+    this.textarea.selectionStart = this.textarea.selectionEnd = cursorPos;
+
+    // Update clear button visibility when text changes
+    this.updateClearVisibility();
+
+    this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  handleError(event) {
+    console.error('Speech recognition error:', event.error);
+    if (event.error === 'no-speech') {
+      this.setStatus('No speech detected. Try again.', 'error');
+    } else if (event.error === 'not-allowed') {
+      this.setStatus('Microphone permission denied. Please allow microphone access.', 'error');
+    } else if (event.error === 'aborted') {
+      // User stopped recording, don't show error
+      return;
+    } else {
+      this.setStatus(`Voice input error: ${event.error}`, 'error');
+    }
+    this.stop();
+  }
+
+  handleEnd() {
+    this.stop();
+  }
+
+  start() {
+    if (!this.recognition) return;
+    try {
+      this.recognition.start();
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      this.setStatus('Unable to start voice input.', 'error');
+    }
+  }
+
+  stop() {
+    if (this.isRecording && this.recognition) {
+      this.isRecording = false;
+      try {
+        this.recognition.stop();
+      } catch (err) {
+        // Ignore errors when stopping
+      }
+      this.voiceBtn.classList.remove('is-recording');
+      this.voiceBtn.setAttribute('aria-label', 'Start voice input');
+      this.voiceBtn.setAttribute('title', 'Start voice input');
+      this.setStatus('', 'info');
+      // Reset tracking variables
+      this.recordingStartPosition = 0;
+      this.currentInterimLength = 0;
+    }
+  }
+}
+
 function stripMarkdownFences(text) {
   if (!text) return '';
   let trimmed = text.trim();
@@ -244,32 +394,6 @@ function injectUI() {
 
   const textarea = document.getElementById('nl-input');
 
-  // Voice input functionality - declare variables first
-  const voiceBtn = document.getElementById('nl-voice-btn');
-  let recognition = null;
-  let isRecording = false;
-  let recordingStartPosition = 0;
-  let currentInterimLength = 0;
-
-  // Stop recording function (accessible from anywhere) - declare early
-  const stopRecording = () => {
-    if (isRecording && recognition) {
-      isRecording = false;
-      try {
-        recognition.stop();
-      } catch (err) {
-        // Ignore errors when stopping
-      }
-      voiceBtn.classList.remove('is-recording');
-      voiceBtn.setAttribute('aria-label', 'Start voice input');
-      voiceBtn.setAttribute('title', 'Start voice input');
-      setStatus('', 'info');
-      // Reset tracking variables
-      recordingStartPosition = 0;
-      currentInterimLength = 0;
-    }
-  };
-
   // Clear input button (show/hide based on content)
   const inputClearBtn = document.getElementById('nl-input-clear');
   const updateInputClearVisibility = () => {
@@ -279,121 +403,17 @@ function injectUI() {
   textarea.addEventListener('input', updateInputClearVisibility);
   updateInputClearVisibility(); // Initial check
 
+  // Initialize voice input handler
+  const voiceBtn = document.getElementById('nl-voice-btn');
+  const voiceHandler = new VoiceInputHandler(textarea, voiceBtn, setStatus, updateInputClearVisibility);
+
   inputClearBtn.addEventListener('click', () => {
     textarea.value = '';
     textarea.focus();
     updateInputClearVisibility();
     // Also stop voice recording if active
-    stopRecording();
+    voiceHandler.stop();
   });
-
-  // Check for browser support
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.continuous = true; // Keep listening
-    recognition.interimResults = true; // Show interim results
-    recognition.lang = 'en-US';
-
-
-    recognition.onstart = () => {
-      isRecording = true;
-      voiceBtn.classList.add('is-recording');
-      voiceBtn.setAttribute('aria-label', 'Stop voice input');
-      voiceBtn.setAttribute('title', 'Stop voice input');
-      setStatus('Listening...', 'info');
-      // Store where we started recording (current cursor position)
-      recordingStartPosition = textarea.selectionStart;
-      currentInterimLength = 0;
-    };
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      const finalParts = [];
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalParts.push(transcript);
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-      const finalTranscript = finalParts.join(' ');
-
-      // Calculate the end of the recording area (where we started + what we've recorded so far)
-      const recordingEndPosition = recordingStartPosition + currentInterimLength;
-
-      // Get text before and after the recording area
-      const textBefore = textarea.value.substring(0, recordingStartPosition);
-      const textAfter = textarea.value.substring(recordingEndPosition);
-
-      // Build new value: existing text before + all final transcripts + current interim (if any)
-      let newValue = textBefore + finalTranscript;
-      if (interimTranscript) {
-        newValue += interimTranscript;
-      }
-      newValue += textAfter;
-
-      // Update textarea with the new value
-      textarea.value = newValue;
-
-      // Update tracking: move start position forward by finalized text, track new interim length
-      if (finalTranscript) {
-        recordingStartPosition += finalTranscript.length;
-      }
-      currentInterimLength = interimTranscript.length;
-
-      // Set cursor at the end of the transcribed text (after final + interim)
-      const cursorPos = recordingStartPosition + currentInterimLength;
-      textarea.selectionStart = textarea.selectionEnd = cursorPos;
-
-      // Update clear button visibility when text changes
-      updateInputClearVisibility();
-
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'no-speech') {
-        setStatus('No speech detected. Try again.', 'error');
-      } else if (event.error === 'not-allowed') {
-        setStatus('Microphone permission denied. Please allow microphone access.', 'error');
-      } else if (event.error === 'aborted') {
-        // User stopped recording, don't show error
-        return;
-      } else {
-        setStatus(`Voice input error: ${event.error}`, 'error');
-      }
-      stopRecording();
-    };
-
-    recognition.onend = () => {
-      stopRecording();
-    };
-
-    const startRecording = () => {
-      try {
-        recognition.start();
-      } catch (err) {
-        console.error('Failed to start recognition:', err);
-        setStatus('Unable to start voice input.', 'error');
-      }
-    };
-
-    voiceBtn.addEventListener('click', () => {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
-    });
-  } else {
-    // Browser doesn't support speech recognition
-    voiceBtn.style.display = 'none';
-  }
 
   const contextTextarea = document.getElementById('nl-context-input');
   const contextFileInput = document.getElementById('nl-context-file');
@@ -1145,7 +1165,7 @@ function injectUI() {
 
   document.getElementById('nl-submit').onclick = () => {
     // Stop voice recording if active
-    stopRecording();
+    voiceHandler.stop();
 
     const prompt = textarea.value.trim();
     if (!prompt) {
