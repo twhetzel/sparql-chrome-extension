@@ -117,6 +117,9 @@ class VoiceInputHandler {
       this.setStatus('No speech detected. Try again.', 'error');
     } else if (event.error === 'not-allowed') {
       this.setStatus('Microphone permission denied. Please allow microphone access.', 'error');
+      // Disable the voice button since permission was denied
+      this.voiceBtn.disabled = true;
+      this.voiceBtn.setAttribute('title', 'Microphone permission denied');
     } else if (event.error === 'aborted') {
       // User stopped recording, don't show error
       return;
@@ -131,7 +134,7 @@ class VoiceInputHandler {
   }
 
   start() {
-    if (!this.recognition) return;
+    if (!this.recognition || this.voiceBtn.disabled) return;
     try {
       this.recognition.start();
     } catch (err) {
