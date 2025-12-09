@@ -731,15 +731,17 @@ function injectUI() {
       setContextStatus('Context source set to none.', 'info');
     } else {
       // Restore omnigraph file checkboxes if applicable
+      // Note: We restore the UI state but don't auto-load to avoid unnecessary network requests
+      // User must explicitly click "Load Selected Files" to fetch content
       if (savedSource === 'omnigraph' && savedFiles && contextOmnigraphFileList) {
         const filenames = savedFiles.split(',').filter(f => f);
         const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
         checkboxes.forEach(cb => {
           cb.checked = filenames.includes(cb.value);
         });
-        // Auto-load if files were previously selected
+        // Don't auto-load - require explicit user action to avoid unnecessary network requests
         if (filenames.length > 0) {
-          loadSelectedOmnigraphFiles();
+          setContextStatus('Previous file selection restored. Click "Load Selected Files" to load context.', 'info');
         }
       }
 
