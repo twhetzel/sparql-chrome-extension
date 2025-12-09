@@ -778,7 +778,7 @@ function injectUI() {
     voiceHandler.stop();
   });
 
-  const MAX_CONTEXT_CHARS = 20000;
+  const MAX_CONTEXT_CHARS = 50000;
   const OMNIGRAPH_AGENT_BASE_URL = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
   const modelSelect = document.getElementById('nl-model-select');
   const allowedModels = ['gpt-4.1'];
@@ -918,9 +918,18 @@ function injectUI() {
   };
 
   const applyLoadedContext = (text, sourceLabel) => {
+    const originalLength = (text || '').length;
     const trimmed = (text || '').slice(0, MAX_CONTEXT_CHARS);
     contextTextarea.value = trimmed;
-    setContextStatus(sourceLabel ? `Loaded context from ${sourceLabel}.` : 'Context loaded.', 'success');
+
+    // Show warning if content was truncated
+    if (originalLength > MAX_CONTEXT_CHARS) {
+      const truncatedChars = originalLength - MAX_CONTEXT_CHARS;
+      setContextStatus(`Loaded context from ${sourceLabel}. WARNING: Content truncated by ${truncatedChars.toLocaleString()} characters (limit: ${MAX_CONTEXT_CHARS.toLocaleString()} chars).`, 'warning');
+    } else {
+      setContextStatus(sourceLabel ? `Loaded context from ${sourceLabel}.` : 'Context loaded.', 'success');
+    }
+
     // Enable textarea after content is loaded
     if (contextTextarea) {
       contextTextarea.disabled = false;
