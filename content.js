@@ -559,6 +559,18 @@ function injectUI() {
     }
   };
 
+  const removeMetadataFields = (context) => {
+    // Remove metadata fields that aren't useful for the LLM
+    // These are only used for tracking which files were loaded, not for query generation
+    const cleaned = JSON.parse(JSON.stringify(context));
+    delete cleaned.graph_id;
+    delete cleaned.endpoint;
+    delete cleaned.source_id;
+    delete cleaned.repository_filter;
+    delete cleaned.inherits_from;
+    return cleaned;
+  };
+
   const loadContextFromSource = async () => {
     const value = contextSourceSelect?.value || 'none';
     const isCustom = value === 'custom';
@@ -582,7 +594,16 @@ function injectUI() {
           return;
         }
         const text = await loadRemoteContext(url);
-        applyLoadedContext(text, url);
+        // Parse and clean metadata if it's JSON
+        try {
+          const parsed = JSON.parse(text);
+          const cleaned = removeMetadataFields(parsed);
+          const cleanedText = JSON.stringify(cleaned, null, 2);
+          applyLoadedContext(cleanedText, url);
+        } catch (parseErr) {
+          // If not valid JSON, use text as-is (might be plain text context)
+          applyLoadedContext(text, url);
+        }
         persistContextSelection(value, url);
       }
     } catch (err) {
@@ -803,7 +824,7 @@ function injectUI() {
 
   const mergeContextFiles = (contexts) => {
     if (!contexts || contexts.length === 0) return null;
-    if (contexts.length === 1) return contexts[0];
+    if (contexts.length === 1) return removeMetadataFields(contexts[0]);
 
     // Start with the first context as the base
     const merged = JSON.parse(JSON.stringify(contexts[0]));
@@ -880,19 +901,18 @@ function injectUI() {
         merged.example_queries = [...(merged.example_queries || []), ...ctx.example_queries];
       }
 
-      // Merge repository_filter (take the last one, or combine if needed)
+      // Note: repository_filter, source_id, inherits_from are metadata fields
+      // that will be removed before sending to OpenAI (see cleanup below)
       if (ctx.repository_filter) {
         merged.repository_filter = ctx.repository_filter;
       }
-
-      // Handle inherits_from (keep from first file)
-      // source_id can be combined if needed
       if (ctx.source_id && !merged.source_id) {
         merged.source_id = ctx.source_id;
       }
     }
 
-    return merged;
+    // Remove metadata fields before returning
+    return removeMetadataFields(merged);
   };
 
   const applyLoadedContext = (text, sourceLabel) => {
