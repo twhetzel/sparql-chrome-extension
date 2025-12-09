@@ -9,6 +9,7 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+
 /**
  * VoiceInputHandler - Manages speech recognition for voice input
  */
@@ -393,6 +394,58 @@ function injectUI() {
       </div>
     </label>
     <div class="nl-context-section">
+      <div class="nl-context-source-row">
+        <label for="nl-context-source">
+          Context source
+          <span class="nl-context-note">(Context is sent to OpenAI; don’t include sensitive data.)</span>
+        </label>
+        <select id="nl-context-source" class="nl-context-select">
+          <option value="none">None</option>
+          <option value="omnigraph">Omnigraph repo URL…</option>
+          <option value="custom">Custom URL…</option>
+        </select>
+      </div>
+      <div class="nl-context-url-row" id="nl-context-url-row" hidden>
+        <div id="nl-context-omnigraph-file-list" class="nl-context-omnigraph-file-list" hidden>
+          <div class="nl-context-omnigraph-checkboxes">
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_global.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE Global</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_immport.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE ImmPort</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_vivli.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE Vivli</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_immunespace.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE ImmuneSpace</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_project_tycho.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE Project Tycho</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_radx_data_hub.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE RADx Data Hub</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_vdjserver.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE VDJServer</span>
+            </label>
+            <label class="nl-context-omnigraph-checkbox">
+              <input type="checkbox" value="nde_zenodo.json" class="nl-context-omnigraph-checkbox-input">
+              <span>NDE Zenodo</span>
+            </label>
+          </div>
+          <button id="nl-context-omnigraph-load" type="button" class="nl-button nl-button--secondary">Load Selected Files</button>
+        </div>
+        <input id="nl-context-url" type="url" class="nl-context-url" placeholder="">
+        <button id="nl-context-url-load" type="button" class="nl-button nl-button--secondary">Load URL</button>
+      </div>
       <textarea id="nl-context-input" class="nl-context-input" rows="4" placeholder="Paste supplemental notes or ontology snippets that should inform the query (optional)."></textarea>
       <div class="nl-context-actions">
         <label class="nl-context-upload">
@@ -437,6 +490,251 @@ function injectUI() {
 
   const textarea = document.getElementById('nl-input');
 
+  // Get DOM elements early so they're available to functions
+  const contextTextarea = document.getElementById('nl-context-input');
+  const contextFileInput = document.getElementById('nl-context-file');
+  const contextClearButton = document.getElementById('nl-context-clear');
+  const contextStatus = document.getElementById('nl-context-status');
+  const contextSourceSelect = document.getElementById('nl-context-source');
+  const contextUrlRow = document.getElementById('nl-context-url-row');
+  const contextUrlInput = document.getElementById('nl-context-url');
+  const contextUrlLoad = document.getElementById('nl-context-url-load');
+  const contextOmnigraphFileList = document.getElementById('nl-context-omnigraph-file-list');
+  const contextOmnigraphLoadButton = document.getElementById('nl-context-omnigraph-load');
+
+  const persistContextSelection = (value, urlValue) => {
+    chrome.storage.local.set({
+      nl_context_source: value,
+      nl_context_custom_url: urlValue || ''
+    });
+  };
+
+  const updateContextSourceUI = () => {
+    const value = contextSourceSelect?.value || 'none';
+    const isCustom = value === 'custom';
+    const isOmnigraph = value === 'omnigraph';
+    const needsUrl = isCustom || isOmnigraph;
+    const hasContext = contextTextarea?.value.trim().length > 0;
+
+    if (contextUrlRow) {
+      contextUrlRow.hidden = !needsUrl;
+    }
+
+    // Show/hide file selector vs URL input based on selection
+    if (contextOmnigraphFileList) {
+      contextOmnigraphFileList.hidden = !isOmnigraph;
+    }
+    if (contextUrlInput) {
+      if (isOmnigraph) {
+        // Hide URL input for omnigraph - users select files via checkboxes
+        contextUrlInput.style.display = 'none';
+      } else if (isCustom) {
+        contextUrlInput.style.display = 'block';
+        contextUrlInput.placeholder = 'https://example.com/context.json';
+      } else {
+        contextUrlInput.style.display = 'none';
+      }
+    }
+    if (contextUrlLoad) {
+      // Show load button for custom URL, hide for omnigraph (uses Load Selected Files button)
+      contextUrlLoad.style.display = isCustom ? 'block' : 'none';
+    }
+
+    // Disable textarea when URL options are selected but no content loaded yet
+    // Enable when "None" is selected (for manual input) or when content exists
+    if (contextTextarea) {
+      if (value === 'none') {
+        // Always enable when "None" is selected (allows manual paste/upload)
+        contextTextarea.disabled = false;
+        contextTextarea.placeholder = 'Paste supplemental notes or ontology snippets that should inform the query (optional).';
+      } else if (needsUrl && !hasContext) {
+        // Disable when URL option is selected but no content loaded yet
+        contextTextarea.disabled = true;
+        contextTextarea.placeholder = 'Load context from URL to enable editing.';
+      } else {
+        // Enable when content exists
+        contextTextarea.disabled = false;
+        contextTextarea.placeholder = 'Paste supplemental notes or ontology snippets that should inform the query (optional).';
+      }
+    }
+  };
+
+  const loadContextFromSource = async () => {
+    const value = contextSourceSelect?.value || 'none';
+    const isCustom = value === 'custom';
+    const isOmnigraph = value === 'omnigraph';
+    const needsUrl = isCustom || isOmnigraph;
+
+    if (value === 'none') {
+      setContextStatus('Context source set to none.', 'info');
+      return;
+    }
+
+    try {
+      if (needsUrl) {
+        const url = (contextUrlInput?.value || '').trim();
+        if (!url) {
+          setContextStatus('Enter a URL to load context.', 'warning');
+          return;
+        }
+        if (!/^https:\/\//i.test(url)) {
+          setContextStatus('Only https URLs are allowed for context.', 'warning');
+          return;
+        }
+        const text = await loadRemoteContext(url);
+        applyLoadedContext(text, url);
+        persistContextSelection(value, url);
+      }
+    } catch (err) {
+      console.error('Context load failed', err);
+      setContextStatus(err.message || 'Failed to load context.', 'error');
+    }
+  };
+
+  // Handle omnigraph file loading - load and merge selected files
+  const loadSelectedOmnigraphFiles = async () => {
+    const checkboxes = contextOmnigraphFileList?.querySelectorAll('.nl-context-omnigraph-checkbox-input:checked');
+    if (!checkboxes || checkboxes.length === 0) {
+      setContextStatus('Select at least one file to load.', 'warning');
+      return;
+    }
+
+    const filenames = Array.from(checkboxes).map(cb => cb.value);
+    setContextStatus(`Loading ${filenames.length} file(s) from omnigraph repo...`, 'info');
+
+    try {
+      const baseUrl = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
+      const contexts = [];
+
+      // Load all selected files
+      for (const filename of filenames) {
+        const url = `${baseUrl}${filename}`;
+        const text = await loadRemoteContext(url);
+        const parsed = JSON.parse(text);
+        contexts.push(parsed);
+      }
+
+      // Merge contexts
+      const merged = mergeContextFiles(contexts);
+      const mergedText = JSON.stringify(merged, null, 2);
+
+      // Update URL input with first file's URL for reference
+      if (contextUrlInput && filenames.length > 0) {
+        contextUrlInput.value = `${baseUrl}${filenames[0]}`;
+      }
+
+      applyLoadedContext(mergedText, filenames.length === 1 ? filenames[0] : `${filenames.length} files merged`);
+
+      // Persist selection
+      const selectedFiles = filenames.join(',');
+      chrome.storage.local.set({
+        nl_context_source: 'omnigraph',
+        nl_context_omnigraph_files: selectedFiles,
+        nl_context_custom_url: contextUrlInput?.value || ''
+      });
+    } catch (err) {
+      console.error('Failed to load omnigraph files', err);
+      setContextStatus(err.message || 'Failed to load files from omnigraph repo.', 'error');
+    }
+  };
+
+  contextOmnigraphLoadButton?.addEventListener('click', loadSelectedOmnigraphFiles);
+
+  contextSourceSelect?.addEventListener('change', () => {
+    const value = contextSourceSelect?.value || 'none';
+
+    // Update UI visibility first (this hides/shows elements based on selection)
+    updateContextSourceUI();
+
+    // Clear context textarea whenever source changes (prepare for new content)
+    if (contextTextarea) {
+      contextTextarea.value = '';
+    }
+
+    // If "None" is selected, clear all context-related state
+    if (value === 'none') {
+      // Clear omnigraph checkboxes
+      if (contextOmnigraphFileList) {
+        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+        checkboxes.forEach(cb => cb.checked = false);
+      }
+      // Clear URL input
+      if (contextUrlInput) {
+        contextUrlInput.value = '';
+      }
+      // Clear storage
+      chrome.storage.local.set({
+        nl_context_source: 'none',
+        nl_context_custom_url: '',
+        nl_context_omnigraph_files: ''
+      });
+      setContextStatus('Context cleared.', 'info');
+    } else {
+      // Reset checkboxes when switching away from omnigraph
+      if (contextOmnigraphFileList && value !== 'omnigraph') {
+        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+        checkboxes.forEach(cb => cb.checked = false);
+      }
+      // Update status message based on selection
+      if (value === 'omnigraph') {
+        setContextStatus('Select one or more files and click "Load Selected Files" to load context.', 'info');
+      } else {
+        setContextStatus('Enter a URL and click "Load URL" to load context.', 'info');
+      }
+    }
+  });
+
+  contextUrlLoad?.addEventListener('click', loadContextFromSource);
+
+  chrome.storage.local.get(['nl_context_source', 'nl_context_custom_url', 'nl_context_omnigraph_files'], async (result) => {
+    const savedSource = result?.nl_context_source || 'none';
+    const savedUrl = result?.nl_context_custom_url || '';
+    const savedFiles = result?.nl_context_omnigraph_files || '';
+
+    if (contextSourceSelect) {
+      contextSourceSelect.value = savedSource;
+      updateContextSourceUI();
+    }
+
+    // If "None" was saved, ensure context is cleared
+    if (savedSource === 'none') {
+      if (contextTextarea) {
+        contextTextarea.value = '';
+      }
+      if (contextOmnigraphFileList) {
+        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+        checkboxes.forEach(cb => cb.checked = false);
+      }
+      if (contextUrlInput) {
+        contextUrlInput.value = '';
+      }
+      setContextStatus('Context source set to none.', 'info');
+    } else {
+      // Restore omnigraph file checkboxes if applicable
+      if (savedSource === 'omnigraph' && savedFiles && contextOmnigraphFileList) {
+        const filenames = savedFiles.split(',').filter(f => f);
+        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+        checkboxes.forEach(cb => {
+          cb.checked = filenames.includes(cb.value);
+        });
+        // Auto-load if files were previously selected
+        if (filenames.length > 0) {
+          loadSelectedOmnigraphFiles();
+        }
+      }
+
+      if (contextUrlInput && savedUrl) {
+        contextUrlInput.value = savedUrl;
+      }
+      // Auto-load if there's a saved URL for custom source (but not omnigraph with files, already handled above)
+      if (savedUrl && savedSource === 'custom') {
+        loadContextFromSource();
+      }
+    }
+    // Update UI state after initial load
+    updateContextSourceUI();
+  });
+
   // Clear input button (show/hide based on content)
   const inputClearBtn = document.getElementById('nl-input-clear');
   const updateInputClearVisibility = () => {
@@ -458,10 +756,6 @@ function injectUI() {
     voiceHandler.stop();
   });
 
-  const contextTextarea = document.getElementById('nl-context-input');
-  const contextFileInput = document.getElementById('nl-context-file');
-  const contextClearButton = document.getElementById('nl-context-clear');
-  const contextStatus = document.getElementById('nl-context-status');
   const MAX_CONTEXT_CHARS = 20000;
   const modelSelect = document.getElementById('nl-model-select');
   const allowedModels = ['gpt-4.1'];
@@ -493,6 +787,123 @@ function injectUI() {
     if (!text) return '';
     if (text.length <= limit) return text;
     return `${text.slice(0, limit - 1)}…`;
+  };
+
+  const setContextStatus = (message, type = 'info') => {
+    contextStatus.textContent = message;
+    contextStatus.setAttribute('data-status-type', type);
+    contextStatus.style.display = message ? 'block' : 'none';
+  };
+
+  const loadRemoteContext = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch URL (${res.status})`);
+    return res.text();
+  };
+
+  const mergeContextFiles = (contexts) => {
+    if (!contexts || contexts.length === 0) return null;
+    if (contexts.length === 1) return contexts[0];
+
+    // Start with the first context as the base
+    const merged = JSON.parse(JSON.stringify(contexts[0]));
+
+    // Merge additional contexts
+    for (let i = 1; i < contexts.length; i++) {
+      const ctx = contexts[i];
+
+      // Merge entity_types (combine arrays, remove duplicates)
+      if (ctx.entity_types && Array.isArray(ctx.entity_types)) {
+        merged.entity_types = [...(merged.entity_types || []), ...ctx.entity_types];
+        merged.entity_types = [...new Set(merged.entity_types)];
+      }
+
+      // Merge dimensions by name
+      if (ctx.dimensions && Array.isArray(ctx.dimensions)) {
+        const dimensionMap = new Map();
+        // Add existing dimensions to map
+        (merged.dimensions || []).forEach(dim => {
+          dimensionMap.set(dim.name, dim);
+        });
+        // Merge new dimensions
+        ctx.dimensions.forEach(dim => {
+          const existing = dimensionMap.get(dim.name);
+          if (existing) {
+            // Merge: combine top_values, take max coverage, sum distinct values
+            const existingValues = new Map();
+            (existing.top_values || []).forEach(tv => {
+              existingValues.set(tv.value, tv.count);
+            });
+            (dim.top_values || []).forEach(tv => {
+              const currentCount = existingValues.get(tv.value) || 0;
+              existingValues.set(tv.value, currentCount + tv.count);
+            });
+            existing.top_values = Array.from(existingValues.entries())
+              .map(([value, count]) => ({ value, count }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 10); // Keep top 10
+            existing.coverage = Math.max(existing.coverage || 0, dim.coverage || 0);
+            existing.approx_distinct_values = Math.max(
+              existing.approx_distinct_values || 0,
+              dim.approx_distinct_values || 0
+            );
+          } else {
+            dimensionMap.set(dim.name, JSON.parse(JSON.stringify(dim)));
+          }
+        });
+        merged.dimensions = Array.from(dimensionMap.values());
+      }
+
+      // Handle dimension_overrides (merge objects)
+      if (ctx.dimension_overrides) {
+        merged.dimension_overrides = merged.dimension_overrides || {};
+        Object.assign(merged.dimension_overrides, ctx.dimension_overrides);
+      }
+
+      // Merge prefixes (combine objects)
+      if (ctx.prefixes) {
+        merged.prefixes = merged.prefixes || {};
+        Object.assign(merged.prefixes, ctx.prefixes);
+      }
+
+      // Merge text_blurb (concatenate with separator)
+      if (ctx.text_blurb) {
+        if (merged.text_blurb) {
+          merged.text_blurb = `${merged.text_blurb}\n\n---\n\n${ctx.text_blurb}`;
+        } else {
+          merged.text_blurb = ctx.text_blurb;
+        }
+      }
+
+      // Merge example_queries if present
+      if (ctx.example_queries && Array.isArray(ctx.example_queries)) {
+        merged.example_queries = [...(merged.example_queries || []), ...ctx.example_queries];
+      }
+
+      // Merge repository_filter (take the last one, or combine if needed)
+      if (ctx.repository_filter) {
+        merged.repository_filter = ctx.repository_filter;
+      }
+
+      // Handle inherits_from (keep from first file)
+      // source_id can be combined if needed
+      if (ctx.source_id && !merged.source_id) {
+        merged.source_id = ctx.source_id;
+      }
+    }
+
+    return merged;
+  };
+
+  const applyLoadedContext = (text, sourceLabel) => {
+    const trimmed = (text || '').slice(0, MAX_CONTEXT_CHARS);
+    contextTextarea.value = trimmed;
+    setContextStatus(sourceLabel ? `Loaded context from ${sourceLabel}.` : 'Context loaded.', 'success');
+    // Enable textarea after content is loaded
+    if (contextTextarea) {
+      contextTextarea.disabled = false;
+    }
+    updateContextSourceUI();
   };
 
   const persistHistory = () => {
@@ -823,12 +1234,6 @@ function injectUI() {
     }
   };
 
-  function setContextStatus(message, type = 'info') {
-    contextStatus.textContent = message;
-    contextStatus.setAttribute('data-status-type', type);
-    contextStatus.style.display = message ? 'block' : 'none';
-  }
-
   contextTextarea.addEventListener('input', () => {
     if (contextTextarea.value.length > MAX_CONTEXT_CHARS) {
       contextTextarea.value = contextTextarea.value.slice(0, MAX_CONTEXT_CHARS);
@@ -836,6 +1241,8 @@ function injectUI() {
     } else {
       setContextStatus('', 'info');
     }
+    // Update disabled state when content changes
+    updateContextSourceUI();
   });
   setContextStatus('', 'info');
 
@@ -852,6 +1259,11 @@ function injectUI() {
       const text = String(e.target?.result || '').slice(0, MAX_CONTEXT_CHARS);
       contextTextarea.value = text;
       setContextStatus(`Loaded context from ${file.name}.`, 'success');
+      // Enable textarea after file is loaded
+      if (contextTextarea) {
+        contextTextarea.disabled = false;
+      }
+      updateContextSourceUI();
     };
     reader.onerror = () => {
       setContextStatus('Failed to read context file.', 'error');
@@ -861,7 +1273,33 @@ function injectUI() {
   });
 
   contextClearButton.addEventListener('click', () => {
+    // Clear context textarea
     contextTextarea.value = '';
+
+    // Reset context source selector to "None"
+    if (contextSourceSelect) {
+      contextSourceSelect.value = 'none';
+      updateContextSourceUI();
+    }
+
+    // Clear omnigraph checkboxes
+    if (contextOmnigraphFileList) {
+      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+      checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    // Clear URL input
+    if (contextUrlInput) {
+      contextUrlInput.value = '';
+    }
+
+    // Clear storage
+    chrome.storage.local.set({
+      nl_context_source: 'none',
+      nl_context_custom_url: '',
+      nl_context_omnigraph_files: ''
+    });
+
     setContextStatus('Context cleared.', 'info');
   });
 

@@ -106,6 +106,7 @@
   /* Allows flex child to shrink below content size */
 }
 
+
 .nl-to-sparql-box__title-text {
   flex: 1;
 }
@@ -387,6 +388,145 @@
   margin-bottom: 14px;
 }
 
+.nl-context-source-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nl-context-source-row label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.nl-context-select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #c9d1d9;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.nl-context-select:focus {
+  outline: 2px solid #2563eb;
+}
+
+.nl-context-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nl-context-url-row[hidden] {
+  display: none !important;
+}
+
+.nl-context-file-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #c9d1d9;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.nl-context-file-select[hidden] {
+  display: none !important;
+}
+
+.nl-context-file-select:focus {
+  outline: 2px solid #2563eb;
+}
+
+.nl-context-url {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #c9d1d9;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #1f2937;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+.nl-context-url:focus {
+  outline: 2px solid #2563eb;
+}
+
+.nl-context-omnigraph-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.nl-context-omnigraph-file-list[hidden] {
+  display: none !important;
+}
+
+.nl-context-omnigraph-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 119px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  background: #f9fafb;
+}
+
+.nl-context-omnigraph-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 3px 0;
+  user-select: none;
+}
+
+.nl-context-omnigraph-checkbox:hover {
+  color: #2563eb;
+}
+
+.nl-context-omnigraph-checkbox-input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+}
+
+.nl-context-omnigraph-checkbox span {
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.nl-context-omnigraph-checkbox:hover span {
+  color: #2563eb;
+}
+
+.nl-context-omnigraph-checkbox-input:checked+span {
+  font-weight: 500;
+}
+
+.nl-context-note {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #6b7280;
+  margin-left: 6px;
+}
+
 .nl-divider {
   border: none;
   border-top: 1px solid #e2e8f0;
@@ -408,6 +548,13 @@
 
 .nl-context-input:focus {
   outline: 2px solid #2563eb;
+}
+
+.nl-context-input:disabled {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .nl-context-actions {
