@@ -11,7 +11,7 @@ SPARQLPrompt is a Chrome Extension designed for use with the site https://yasgui
 ## Context file selection
 - Users can select context files directly from the extension UI, regardless of which page/graph they're querying.
 - Available options:
-  - **Omnigraph repo URL**: Select one or more context files from the `omnigraph-agent` repository on GitHub. Multiple files can be selected and will be automatically merged.
+  - **OmniGraph Agent repo URL**: Select one or more context files from the `omnigraph-agent` [repository](https://github.com/twhetzel/omnigraph-agent/tree/main/dist/context) on GitHub. Multiple files can be selected and will be automatically merged. These are pre-defined graph context files. Submit an issue or PR to add your own context file to the [OmniGraph Agent repo](https://github.com/twhetzel/omnigraph-agent).
   - **Custom URL**: Enter any URL to load a context file from the web.
   - **Manual paste/upload**: Paste context directly into the textarea or upload a file.
 - The selected context is loaded into the context textarea where it can be viewed and edited before use.
