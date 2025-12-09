@@ -624,12 +624,11 @@ function injectUI() {
     setContextStatus(`Loading ${filenames.length} file(s) from omnigraph repo...`, 'info');
 
     try {
-      const baseUrl = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
       const contexts = [];
 
       // Load all selected files
       for (const filename of filenames) {
-        const url = `${baseUrl}${filename}`;
+        const url = `${OMNIGRAPH_AGENT_BASE_URL}${filename}`;
         const text = await loadRemoteContext(url);
         const parsed = JSON.parse(text);
         contexts.push(parsed);
@@ -641,7 +640,7 @@ function injectUI() {
 
       // Update URL input with first file's URL for reference
       if (contextUrlInput && filenames.length > 0) {
-        contextUrlInput.value = `${baseUrl}${filenames[0]}`;
+        contextUrlInput.value = `${OMNIGRAPH_AGENT_BASE_URL}${filenames[0]}`;
       }
 
       applyLoadedContext(mergedText, filenames.length === 1 ? filenames[0] : `${filenames.length} files merged`);
@@ -778,6 +777,7 @@ function injectUI() {
   });
 
   const MAX_CONTEXT_CHARS = 20000;
+  const OMNIGRAPH_AGENT_BASE_URL = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
   const modelSelect = document.getElementById('nl-model-select');
   const allowedModels = ['gpt-4.1'];
   const DEFAULT_MODEL = 'gpt-4.1';
