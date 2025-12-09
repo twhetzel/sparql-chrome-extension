@@ -1,162 +1,167 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <style>
-      body {
-        font-family: sans-serif;
-        min-width: 260px;
-        margin: 0;
-        padding: 16px;
-        background: #f8fafc;
-        color: #1f2937;
-      }
 
-      .popup-container {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
+<head>
+  <style>
+    body {
+      font-family: sans-serif;
+      min-width: 260px;
+      margin: 0;
+      padding: 16px;
+      background: #f8fafc;
+      color: #1f2937;
+    }
 
-      .popup-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 4px;
-      }
+    .popup-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-      .popup-heading {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
 
-      .popup-logo {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-      }
+    .popup-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-      .popup-title {
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin: 0;
-        color: #1f2937;
-      }
+    .popup-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
 
-      .popup-close {
-        border: none;
-        background: transparent;
-        font-size: 1.1rem;
-        line-height: 1;
-        cursor: pointer;
-        color: #64748b;
-        padding: 4px;
-        border-radius: 4px;
-        transition: background 0.2s ease, color 0.2s ease;
-      }
+    .popup-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0;
+      color: #1f2937;
+    }
 
-      .popup-close:hover {
-        background: rgba(148, 163, 184, 0.2);
-        color: #1f2937;
-      }
+    .popup-close {
+      border: none;
+      background: transparent;
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      color: #64748b;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
 
-      label {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 2px;
-      }
+    .popup-close:hover {
+      background: rgba(148, 163, 184, 0.2);
+      color: #1f2937;
+    }
 
-      input {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid #c9d1d9;
-        border-radius: 6px;
-        font-size: 0.95rem;
-        font-family: sans-serif;
-        background: #ffffff;
-        box-sizing: border-box;
-        transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-      }
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 2px;
+    }
 
-      input:focus {
-        outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-        background: #ffffff;
-      }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #c9d1d9;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: sans-serif;
+      background: #ffffff;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
 
-      button {
-        align-self: flex-end;
-        margin-top: 4px;
-        padding: 6px 14px;
-        border-radius: 6px;
-        border: 1px solid #1d4ed8;
-        background: #2563eb;
-        color: #ffffff;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: background 0.2s ease, box-shadow 0.2s ease;
-      }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+      background: #ffffff;
+    }
 
-      button:hover {
-        background: #1d4ed8;
-        box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25);
-      }
+    button {
+      align-self: flex-end;
+      margin-top: 4px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid #1d4ed8;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
 
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+    button:hover {
+      background: #1d4ed8;
+      box-shadow: 0 2px 6px rgba(29, 78, 216, 0.25);
+    }
 
-      #status {
-        font-size: 0.85rem;
-        min-height: 1.2em;
-        color: #2563eb;
-        margin: 0;
-      }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
-      #status[data-status="error"] {
-        color: #ea580c;
-      }
+    #status {
+      font-size: 0.85rem;
+      min-height: 1.2em;
+      color: #2563eb;
+      margin: 0;
+    }
 
-      .popup-footer {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #e2e8f0;
-        text-align: center;
-      }
+    #status[data-status="error"] {
+      color: #ea580c;
+    }
 
-      .popup-footer-link {
-        font-size: 0.75rem;
-        color: #64748b;
-        text-decoration: none;
-        transition: color 0.2s ease;
-      }
 
-      .popup-footer-link:hover {
-        color: #2563eb;
-        text-decoration: underline;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="popup-container">
-      <div class="popup-header">
-        <div class="popup-heading">
-          <img src="icons/sparqlprompt_icon_128.png" alt="SPARQLPrompt icon" class="popup-logo">
-          <p class="popup-title">SPARQLPrompt</p>
-        </div>
-        <button class="popup-close" type="button" aria-label="Close popup">&#x2715;</button>
+    .popup-footer {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+    }
+
+    .popup-footer-link {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .popup-footer-link:hover {
+      color: #2563eb;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="popup-container">
+    <div class="popup-header">
+      <div class="popup-heading">
+        <img src="icons/sparqlprompt_icon_128.png" alt="SPARQLPrompt icon" class="popup-logo">
+        <p class="popup-title">SPARQLPrompt</p>
       </div>
-      <label for="apiKey">OpenAI API Key</label>
-      <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
-      <button id="saveBtn">Save</button>
-      <p id="status" aria-live="polite"></p>
-      <div class="popup-footer">
-        <a href="https://platform.openai.com/usage" target="_blank" rel="noopener noreferrer" class="popup-footer-link">Check API Usage</a>
-      </div>
+      <button class="popup-close" type="button" aria-label="Close popup">&#x2715;</button>
     </div>
-    <script src="popup.js"></script>
-  </body>
+    <label for="apiKey">OpenAI API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+    <button id="saveBtn">Save</button>
+    <p id="status" aria-live="polite"></p>
+    <div class="popup-footer">
+      <a href="https://platform.openai.com/usage" target="_blank" rel="noopener noreferrer"
+        class="popup-footer-link">Check API Usage</a>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
 </html>

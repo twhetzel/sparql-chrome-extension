@@ -7,13 +7,15 @@
     "storage",
     "scripting",
     "activeTab",
+    "tabs",
     "downloads"
   ],
   "host_permissions": [
     "https://yasgui.triply.cc/*",
     "https://yasgui.org/*",
     "http://localhost:8080/yasgui.html",
-    "https://frink-okn.github.io/*"
+    "https://frink-okn.github.io/*",
+    "https://frink.apps.renci.org/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -24,7 +26,8 @@
         "https://yasgui.triply.cc/*",
         "https://yasgui.org/*",
         "http://localhost:8080/yasgui.html",
-        "https://frink-okn.github.io/*"
+        "https://frink-okn.github.io/*",
+        "https://frink.apps.renci.org/*"
       ],
       "js": [
         "content.js"
@@ -51,7 +54,8 @@
         "https://yasgui.triply.cc/*",
         "https://yasgui.org/*",
         "http://localhost:8080/*",
-        "https://frink-okn.github.io/*"
+        "https://frink-okn.github.io/*",
+        "https://frink.apps.renci.org/*"
       ]
     }
   ]
