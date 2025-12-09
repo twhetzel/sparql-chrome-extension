@@ -1692,8 +1692,8 @@ function injectUI() {
             }
 
             let userContent = context
-              ? `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}`
-              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}`;
+              ? `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}\n\nIMPORTANT: Include all necessary PREFIX declarations at the beginning of the query.`
+              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Include all necessary PREFIX declarations at the beginning of the query. Only return the query, no explanation:\n\n${prompt}`;
 
             userContent = `EXTENSION_MODE\n\n${userContent}`;
 
@@ -1706,7 +1706,7 @@ function injectUI() {
               body: JSON.stringify({
                 model: selectedModel,
                 messages: [
-                  { role: 'system', content: 'You are an expert at writing SPARQL queries. You must return ONLY the SPARQL query code with no explanatory text, no comments, and no markdown formatting. Return the raw query only.' },
+                  { role: 'system', content: 'You are an expert at writing SPARQL queries. You must return ONLY the SPARQL query code with no explanatory text, no comments, and no markdown formatting. Return the raw query only. IMPORTANT: Always include all necessary PREFIX declarations at the beginning of the query so it can run directly without additional setup.' },
                   { role: 'user', content: userContent }
                 ],
                 max_tokens: 1024,
