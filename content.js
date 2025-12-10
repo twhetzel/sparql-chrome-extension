@@ -791,7 +791,8 @@ function injectUI() {
   const historyClearButton = document.getElementById('nl-history-clear');
   const getPasteButton = () => document.getElementById('nl-paste');
   let selectedModel = DEFAULT_MODEL;
-  const HISTORY_KEY = 'ontoprompt_history';
+  const HISTORY_KEY = 'sparqlprompt_history';
+  const OLD_HISTORY_KEY = 'ontoprompt_history'; // Legacy key for migration
   const MAX_HISTORY_ENTRIES = 50;
   let historyEntries = [];
 
@@ -1026,10 +1027,17 @@ function injectUI() {
   };
 
   const loadHistory = () => {
-    chrome.storage.local.get([HISTORY_KEY], result => {
-      const stored = result?.[HISTORY_KEY];
-      if (Array.isArray(stored)) {
-        historyEntries = stored;
+    chrome.storage.local.get([HISTORY_KEY, OLD_HISTORY_KEY], result => {
+      // Check for new key first
+      if (Array.isArray(result?.[HISTORY_KEY])) {
+        historyEntries = result[HISTORY_KEY];
+      } else if (Array.isArray(result?.[OLD_HISTORY_KEY])) {
+        // Migrate from old key to new key
+        historyEntries = result[OLD_HISTORY_KEY];
+        chrome.storage.local.set({ [HISTORY_KEY]: historyEntries }, () => {
+          // Remove old key after migration
+          chrome.storage.local.remove(OLD_HISTORY_KEY);
+        });
       } else {
         historyEntries = [];
       }
