@@ -917,6 +917,19 @@ function injectUI() {
     return removeMetadataFields(merged);
   };
 
+  const compressContextForAPI = (context) => {
+    if (!context || !context.trim()) return context;
+    try {
+      // Try to parse as JSON
+      const parsed = JSON.parse(context);
+      // Return compressed JSON (no indentation) to save tokens
+      return JSON.stringify(parsed);
+    } catch (e) {
+      // Not JSON, return as-is (preserve user's text formatting)
+      return context;
+    }
+  };
+
   const applyLoadedContext = (text, sourceLabel) => {
     const originalLength = (text || '').length;
     const trimmed = (text || '').slice(0, MAX_CONTEXT_CHARS);
@@ -1684,7 +1697,9 @@ function injectUI() {
       setStatus('Please describe the query you need before converting.', 'error');
       return;
     }
-    const context = contextTextarea.value.trim();
+    const contextRaw = contextTextarea.value.trim();
+    // Compress JSON context to save tokens, but preserve plain text formatting
+    const context = compressContextForAPI(contextRaw);
     renderLoadingState();
     setStatus('');
     toggleActionButtons(true);
