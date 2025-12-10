@@ -1125,6 +1125,34 @@ function injectUI() {
   const restoreHistoryEntry = entry => {
     textarea.value = entry.prompt || '';
     contextTextarea.value = entry.context || '';
+
+    // Reset context source UI state when restoring
+    // This ensures checkboxes and source selector reflect the restored context
+    if (contextSourceSelect) {
+      contextSourceSelect.value = 'none';
+    }
+
+    // Clear omnigraph checkboxes
+    if (contextOmnigraphFileList) {
+      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+      checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    // Clear URL input
+    if (contextUrlInput) {
+      contextUrlInput.value = '';
+    }
+
+    // Clear saved context source in storage
+    chrome.storage.local.set({
+      nl_context_source: 'none',
+      nl_context_custom_url: '',
+      nl_context_omnigraph_files: ''
+    });
+
+    // Update UI state (enables textarea if content exists, disables if empty)
+    updateContextSourceUI();
+
     if (entry.context) {
       setContextStatus('Context restored from history.', 'info');
     } else {
@@ -1697,9 +1725,9 @@ function injectUI() {
       setStatus('Please describe the query you need before converting.', 'error');
       return;
     }
-    const contextRaw = contextTextarea.value.trim();
+    const contextForHistory = contextTextarea.value.trim();
     // Compress JSON context to save tokens, but preserve plain text formatting
-    const context = compressContextForAPI(contextRaw);
+    const context = compressContextForAPI(contextForHistory);
     renderLoadingState();
     setStatus('');
     toggleActionButtons(true);
@@ -1756,7 +1784,7 @@ function injectUI() {
               id: `hist-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
               timestamp: Date.now(),
               prompt,
-              context,
+              context: contextForHistory,
               model: selectedModel,
               query: cleaned
             });
