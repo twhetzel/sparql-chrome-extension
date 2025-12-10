@@ -571,6 +571,31 @@ function injectUI() {
     return cleaned;
   };
 
+  const resetContextSourceState = () => {
+    // Set source selector to "none"
+    if (contextSourceSelect) {
+      contextSourceSelect.value = 'none';
+    }
+
+    // Clear omnigraph checkboxes
+    if (contextOmnigraphFileList) {
+      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+      checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    // Clear URL input
+    if (contextUrlInput) {
+      contextUrlInput.value = '';
+    }
+
+    // Clear storage
+    chrome.storage.local.set({
+      nl_context_source: 'none',
+      nl_context_custom_url: '',
+      nl_context_omnigraph_files: ''
+    });
+  };
+
   const loadContextFromSource = async () => {
     const value = contextSourceSelect?.value || 'none';
     const isCustom = value === 'custom';
@@ -673,21 +698,7 @@ function injectUI() {
 
     // If "None" is selected, clear all context-related state
     if (value === 'none') {
-      // Clear omnigraph checkboxes
-      if (contextOmnigraphFileList) {
-        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-        checkboxes.forEach(cb => cb.checked = false);
-      }
-      // Clear URL input
-      if (contextUrlInput) {
-        contextUrlInput.value = '';
-      }
-      // Clear storage
-      chrome.storage.local.set({
-        nl_context_source: 'none',
-        nl_context_custom_url: '',
-        nl_context_omnigraph_files: ''
-      });
+      resetContextSourceState();
       setContextStatus('Context cleared.', 'info');
     } else {
       // Reset checkboxes when switching away from omnigraph
@@ -791,7 +802,8 @@ function injectUI() {
   const historyClearButton = document.getElementById('nl-history-clear');
   const getPasteButton = () => document.getElementById('nl-paste');
   let selectedModel = DEFAULT_MODEL;
-  const HISTORY_KEY = 'ontoprompt_history';
+  const HISTORY_KEY = 'sparqlprompt_history';
+  const OLD_HISTORY_KEY = 'ontoprompt_history'; // Legacy key for migration
   const MAX_HISTORY_ENTRIES = 50;
   let historyEntries = [];
 
@@ -1026,10 +1038,17 @@ function injectUI() {
   };
 
   const loadHistory = () => {
-    chrome.storage.local.get([HISTORY_KEY], result => {
-      const stored = result?.[HISTORY_KEY];
-      if (Array.isArray(stored)) {
-        historyEntries = stored;
+    chrome.storage.local.get([HISTORY_KEY, OLD_HISTORY_KEY], result => {
+      // Check for new key first
+      if (Array.isArray(result?.[HISTORY_KEY])) {
+        historyEntries = result[HISTORY_KEY];
+      } else if (Array.isArray(result?.[OLD_HISTORY_KEY])) {
+        // Migrate from old key to new key
+        historyEntries = result[OLD_HISTORY_KEY];
+        chrome.storage.local.set({ [HISTORY_KEY]: historyEntries }, () => {
+          // Remove old key after migration
+          chrome.storage.local.remove(OLD_HISTORY_KEY);
+        });
       } else {
         historyEntries = [];
       }
@@ -1084,7 +1103,7 @@ function injectUI() {
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `ontoprompt-history-${timestamp}.json`;
+    const filename = `sparqlprompt-history-${timestamp}.json`;
 
     const cleanup = () => {
       URL.revokeObjectURL(url);
@@ -1125,6 +1144,14 @@ function injectUI() {
   const restoreHistoryEntry = entry => {
     textarea.value = entry.prompt || '';
     contextTextarea.value = entry.context || '';
+
+    // Reset context source UI state when restoring
+    // This ensures checkboxes and source selector reflect the restored context
+    resetContextSourceState();
+
+    // Update UI state (enables textarea if content exists, disables if empty)
+    updateContextSourceUI();
+
     if (entry.context) {
       setContextStatus('Context restored from history.', 'info');
     } else {
@@ -1320,29 +1347,9 @@ function injectUI() {
     // Clear context textarea
     contextTextarea.value = '';
 
-    // Reset context source selector to "None"
-    if (contextSourceSelect) {
-      contextSourceSelect.value = 'none';
-      updateContextSourceUI();
-    }
-
-    // Clear omnigraph checkboxes
-    if (contextOmnigraphFileList) {
-      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-      checkboxes.forEach(cb => cb.checked = false);
-    }
-
-    // Clear URL input
-    if (contextUrlInput) {
-      contextUrlInput.value = '';
-    }
-
-    // Clear storage
-    chrome.storage.local.set({
-      nl_context_source: 'none',
-      nl_context_custom_url: '',
-      nl_context_omnigraph_files: ''
-    });
+    // Reset context source state
+    resetContextSourceState();
+    updateContextSourceUI();
 
     setContextStatus('Context cleared.', 'info');
   });
@@ -1697,9 +1704,9 @@ function injectUI() {
       setStatus('Please describe the query you need before converting.', 'error');
       return;
     }
-    const contextRaw = contextTextarea.value.trim();
+    const contextForHistory = contextTextarea.value.trim();
     // Compress JSON context to save tokens, but preserve plain text formatting
-    const context = compressContextForAPI(contextRaw);
+    const context = compressContextForAPI(contextForHistory);
     renderLoadingState();
     setStatus('');
     toggleActionButtons(true);
@@ -1756,7 +1763,7 @@ function injectUI() {
               id: `hist-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
               timestamp: Date.now(),
               prompt,
-              context,
+              context: contextForHistory,
               model: selectedModel,
               query: cleaned
             });
