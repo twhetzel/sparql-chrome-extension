@@ -1084,7 +1084,7 @@ function injectUI() {
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `ontoprompt-history-${timestamp}.json`;
+    const filename = `sparqlprompt-history-${timestamp}.json`;
 
     const cleanup = () => {
       URL.revokeObjectURL(url);
