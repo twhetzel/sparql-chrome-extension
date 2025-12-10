@@ -571,6 +571,31 @@ function injectUI() {
     return cleaned;
   };
 
+  const resetContextSourceState = () => {
+    // Set source selector to "none"
+    if (contextSourceSelect) {
+      contextSourceSelect.value = 'none';
+    }
+
+    // Clear omnigraph checkboxes
+    if (contextOmnigraphFileList) {
+      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+      checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    // Clear URL input
+    if (contextUrlInput) {
+      contextUrlInput.value = '';
+    }
+
+    // Clear storage
+    chrome.storage.local.set({
+      nl_context_source: 'none',
+      nl_context_custom_url: '',
+      nl_context_omnigraph_files: ''
+    });
+  };
+
   const loadContextFromSource = async () => {
     const value = contextSourceSelect?.value || 'none';
     const isCustom = value === 'custom';
@@ -673,21 +698,7 @@ function injectUI() {
 
     // If "None" is selected, clear all context-related state
     if (value === 'none') {
-      // Clear omnigraph checkboxes
-      if (contextOmnigraphFileList) {
-        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-        checkboxes.forEach(cb => cb.checked = false);
-      }
-      // Clear URL input
-      if (contextUrlInput) {
-        contextUrlInput.value = '';
-      }
-      // Clear storage
-      chrome.storage.local.set({
-        nl_context_source: 'none',
-        nl_context_custom_url: '',
-        nl_context_omnigraph_files: ''
-      });
+      resetContextSourceState();
       setContextStatus('Context cleared.', 'info');
     } else {
       // Reset checkboxes when switching away from omnigraph
@@ -1136,27 +1147,7 @@ function injectUI() {
 
     // Reset context source UI state when restoring
     // This ensures checkboxes and source selector reflect the restored context
-    if (contextSourceSelect) {
-      contextSourceSelect.value = 'none';
-    }
-
-    // Clear omnigraph checkboxes
-    if (contextOmnigraphFileList) {
-      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-      checkboxes.forEach(cb => cb.checked = false);
-    }
-
-    // Clear URL input
-    if (contextUrlInput) {
-      contextUrlInput.value = '';
-    }
-
-    // Clear saved context source in storage
-    chrome.storage.local.set({
-      nl_context_source: 'none',
-      nl_context_custom_url: '',
-      nl_context_omnigraph_files: ''
-    });
+    resetContextSourceState();
 
     // Update UI state (enables textarea if content exists, disables if empty)
     updateContextSourceUI();
@@ -1356,29 +1347,9 @@ function injectUI() {
     // Clear context textarea
     contextTextarea.value = '';
 
-    // Reset context source selector to "None"
-    if (contextSourceSelect) {
-      contextSourceSelect.value = 'none';
-      updateContextSourceUI();
-    }
-
-    // Clear omnigraph checkboxes
-    if (contextOmnigraphFileList) {
-      const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-      checkboxes.forEach(cb => cb.checked = false);
-    }
-
-    // Clear URL input
-    if (contextUrlInput) {
-      contextUrlInput.value = '';
-    }
-
-    // Clear storage
-    chrome.storage.local.set({
-      nl_context_source: 'none',
-      nl_context_custom_url: '',
-      nl_context_omnigraph_files: ''
-    });
+    // Reset context source state
+    resetContextSourceState();
+    updateContextSourceUI();
 
     setContextStatus('Context cleared.', 'info');
   });
