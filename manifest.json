@@ -15,7 +15,9 @@
     "https://yasgui.org/*",
     "http://localhost:8080/yasgui.html",
     "https://frink-okn.github.io/*",
-    "https://frink.apps.renci.org/*"
+    "https://frink.apps.renci.org/*",
+    "https://api.github.com/*",
+    "https://raw.githubusercontent.com/*"
   ],
   "background": {
     "service_worker": "background.js"

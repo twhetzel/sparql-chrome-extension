@@ -407,39 +407,8 @@ function injectUI() {
       </div>
       <div class="nl-context-url-row" id="nl-context-url-row" hidden>
         <div id="nl-context-omnigraph-file-list" class="nl-context-omnigraph-file-list" hidden>
-          <div class="nl-context-omnigraph-checkboxes">
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_global.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE Global</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_immport.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE ImmPort</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_vivli.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE Vivli</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_immunespace.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE ImmuneSpace</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_project_tycho.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE Project Tycho</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_radx_data_hub.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE RADx Data Hub</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_vdjserver.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE VDJServer</span>
-            </label>
-            <label class="nl-context-omnigraph-checkbox">
-              <input type="checkbox" value="nde_zenodo.json" class="nl-context-omnigraph-checkbox-input">
-              <span>NDE Zenodo</span>
-            </label>
+          <div id="nl-context-omnigraph-checkboxes" class="nl-context-omnigraph-checkboxes">
+            <div class="nl-context-loading">Loading context files...</div>
           </div>
           <button id="nl-context-omnigraph-load" type="button" class="nl-button nl-button--secondary">Load Selected Files</button>
         </div>
@@ -741,20 +710,8 @@ function injectUI() {
       }
       setContextStatus('Context source set to none.', 'info');
     } else {
-      // Restore omnigraph file checkboxes if applicable
-      // Note: We restore the UI state but don't auto-load to avoid unnecessary network requests
-      // User must explicitly click "Load Selected Files" to fetch content
-      if (savedSource === 'omnigraph' && savedFiles && contextOmnigraphFileList) {
-        const filenames = savedFiles.split(',').filter(f => f);
-        const checkboxes = contextOmnigraphFileList.querySelectorAll('.nl-context-omnigraph-checkbox-input');
-        checkboxes.forEach(cb => {
-          cb.checked = filenames.includes(cb.value);
-        });
-        // Don't auto-load - require explicit user action to avoid unnecessary network requests
-        if (filenames.length > 0) {
-          setContextStatus('Previous file selection restored. Click "Load Selected Files" to load context.', 'info');
-        }
-      }
+      // Note: Omnigraph checkbox restoration is handled inside populateOmnigraphFileList()
+      // after the file list is fetched from GitHub API
 
       if (contextUrlInput && savedUrl) {
         contextUrlInput.value = savedUrl;
@@ -766,6 +723,10 @@ function injectUI() {
     }
     // Update UI state after initial load
     updateContextSourceUI();
+
+    // Populate Omnigraph file list from GitHub API (after storage restoration)
+    // This will also restore saved checkbox states if applicable
+    populateOmnigraphFileList();
   });
 
   // Clear input button (show/hide based on content)
@@ -791,6 +752,81 @@ function injectUI() {
 
   const MAX_CONTEXT_CHARS = 50000;
   const OMNIGRAPH_AGENT_BASE_URL = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
+  const OMNIGRAPH_AGENT_API_URL = 'https://api.github.com/repos/twhetzel/omnigraph-agent/contents/dist/context';
+
+  // Helper function to format filename for display (converts "nde_file_name.json" to "NDE File Name")
+  const formatDisplayName = (filename) => {
+    return filename
+      .replace(/\.json$/, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Fetch and populate Omnigraph context file list from GitHub API
+  const populateOmnigraphFileList = async () => {
+    const checkboxesContainer = document.getElementById('nl-context-omnigraph-checkboxes');
+    if (!checkboxesContainer) return;
+
+    try {
+      const response = await fetch(OMNIGRAPH_AGENT_API_URL);
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status}`);
+      }
+
+      const files = await response.json();
+      // Filter for .json files only
+      const jsonFiles = files
+        .filter(file => file.type === 'file' && file.name.endsWith('.json'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      // Clear loading message and populate checkboxes
+      checkboxesContainer.innerHTML = '';
+
+      if (jsonFiles.length === 0) {
+        checkboxesContainer.innerHTML = '<div class="nl-context-loading" style="color: var(--color-warning);">No context files found.</div>';
+        return;
+      }
+
+      jsonFiles.forEach(file => {
+        const label = document.createElement('label');
+        label.className = 'nl-context-omnigraph-checkbox';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = file.name;
+        input.className = 'nl-context-omnigraph-checkbox-input';
+
+        const span = document.createElement('span');
+        span.textContent = formatDisplayName(file.name);
+
+        label.appendChild(input);
+        label.appendChild(span);
+        checkboxesContainer.appendChild(label);
+      });
+
+      // Restore saved checkbox states after populating
+      chrome.storage.local.get(['nl_context_source', 'nl_context_omnigraph_files'], (result) => {
+        const savedSource = result?.nl_context_source || 'none';
+        const savedFiles = result?.nl_context_omnigraph_files || '';
+        if (savedSource === 'omnigraph' && savedFiles) {
+          const filenames = savedFiles.split(',').filter(f => f);
+          const checkboxes = checkboxesContainer.querySelectorAll('.nl-context-omnigraph-checkbox-input');
+          checkboxes.forEach(cb => {
+            if (filenames.includes(cb.value)) {
+              cb.checked = true;
+            }
+          });
+          if (filenames.length > 0) {
+            setContextStatus('Previous file selection restored. Click "Load Selected Files" to load context.', 'info');
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Failed to fetch Omnigraph file list:', err);
+      checkboxesContainer.innerHTML = `<div class="nl-context-loading" style="color: var(--color-error);">Failed to load context files. ${err.message}</div>`;
+    }
+  };
+
   const modelSelect = document.getElementById('nl-model-select');
   const allowedModels = ['gpt-4.1'];
   const DEFAULT_MODEL = 'gpt-4.1';
