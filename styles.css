@@ -520,6 +520,13 @@
   font-weight: 500;
 }
 
+.nl-context-loading {
+  padding: 8px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
 .nl-context-note {
   font-size: 0.8rem;
   font-weight: 400;
