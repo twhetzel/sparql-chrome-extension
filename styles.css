@@ -17,6 +17,11 @@
   flex-direction: column;
   overflow: hidden;
   /* Container doesn't scroll, inner content does */
+
+  /* Status color custom properties */
+  --color-status-success: #15803d;
+  --color-status-warning: #b45309;
+  --color-status-error: #b91c1c;
 }
 
 /* Collapsed/minimized state */
@@ -528,11 +533,11 @@
 }
 
 .nl-context-loading[data-status-type="warning"] {
-  color: #b45309;
+  color: var(--color-status-warning);
 }
 
 .nl-context-loading[data-status-type="error"] {
-  color: #b91c1c;
+  color: var(--color-status-error);
 }
 
 .nl-context-note {
@@ -638,15 +643,15 @@
 }
 
 .nl-context-status[data-status-type="success"] {
-  color: #15803d;
+  color: var(--color-status-success);
 }
 
 .nl-context-status[data-status-type="warning"] {
-  color: #b45309;
+  color: var(--color-status-warning);
 }
 
 .nl-context-status[data-status-type="error"] {
-  color: #b91c1c;
+  color: var(--color-status-error);
 }
 
 .nl-controls {
@@ -742,15 +747,15 @@
 }
 
 .nl-status[data-status-type="success"] {
-  color: #15803d;
+  color: var(--color-status-success);
 }
 
 .nl-status[data-status-type="warning"] {
-  color: #b45309;
+  color: var(--color-status-warning);
 }
 
 .nl-status[data-status-type="error"] {
-  color: #b91c1c;
+  color: var(--color-status-error);
 }
 
 .nl-history {
