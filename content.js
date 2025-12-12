@@ -756,8 +756,16 @@ function injectUI() {
 
   // Helper function to format filename for display (converts "nde_file_name.json" to "NDE File Name")
   const formatDisplayName = (filename) => {
-    return filename
-      .replace(/\.json$/, '')
+    let displayName = filename.replace(/\.json$/, '');
+
+    // Special handling for acronym prefixes to preserve uppercase
+    if (displayName.startsWith('nde_')) {
+      displayName = 'NDE ' + displayName.slice(4);
+    } else if (displayName.startsWith('vbo_')) {
+      displayName = 'VBO ' + displayName.slice(4);
+    }
+
+    return displayName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
   };
@@ -783,10 +791,11 @@ function injectUI() {
       checkboxesContainer.innerHTML = '';
 
       if (jsonFiles.length === 0) {
-        checkboxesContainer.innerHTML = '<div class="nl-context-loading" style="color: var(--color-warning);">No context files found.</div>';
+        checkboxesContainer.innerHTML = '<div class="nl-context-loading" data-status-type="warning">No context files found.</div>';
         return;
       }
 
+      const fragment = document.createDocumentFragment();
       jsonFiles.forEach(file => {
         const label = document.createElement('label');
         label.className = 'nl-context-omnigraph-checkbox';
@@ -801,8 +810,9 @@ function injectUI() {
 
         label.appendChild(input);
         label.appendChild(span);
-        checkboxesContainer.appendChild(label);
+        fragment.appendChild(label);
       });
+      checkboxesContainer.appendChild(fragment);
 
       // Restore saved checkbox states after populating
       chrome.storage.local.get(['nl_context_source', 'nl_context_omnigraph_files'], (result) => {
@@ -823,7 +833,7 @@ function injectUI() {
       });
     } catch (err) {
       console.error('Failed to fetch Omnigraph file list:', err);
-      checkboxesContainer.innerHTML = `<div class="nl-context-loading" style="color: var(--color-error);">Failed to load context files. ${err.message}</div>`;
+      checkboxesContainer.innerHTML = `<div class="nl-context-loading" data-status-type="error">Failed to load context files. ${escapeHtml(err.message)}</div>`;
     }
   };
 
