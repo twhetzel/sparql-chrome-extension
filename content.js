@@ -783,7 +783,7 @@ function injectUI() {
       checkboxesContainer.innerHTML = '';
 
       if (jsonFiles.length === 0) {
-        checkboxesContainer.innerHTML = '<div class="nl-context-loading" style="color: var(--color-warning);">No context files found.</div>';
+        checkboxesContainer.innerHTML = '<div class="nl-context-loading" data-status-type="warning">No context files found.</div>';
         return;
       }
 
@@ -823,7 +823,7 @@ function injectUI() {
       });
     } catch (err) {
       console.error('Failed to fetch Omnigraph file list:', err);
-      checkboxesContainer.innerHTML = `<div class="nl-context-loading" style="color: var(--color-error);">Failed to load context files. ${err.message}</div>`;
+      checkboxesContainer.innerHTML = `<div class="nl-context-loading" data-status-type="error">Failed to load context files. ${escapeHtml(err.message)}</div>`;
     }
   };
 
