@@ -1838,7 +1838,7 @@ function injectUI() {
 
             let userContent = context
               ? `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}\n\nIMPORTANT: Include only PREFIX declarations at the beginning of the query needed to run the query.`
-              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Only return the query, no explanation:\n\n${prompt}`;
+              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Include only PREFIX declarations at the beginning of the query needed to run the query. Only return the query, no explanation:\n\n${prompt}`;
 
             userContent = `EXTENSION_MODE\n\n${userContent}`;
 
