@@ -636,9 +636,8 @@ function injectUI() {
 
         // Track total size across all files
         totalSize += text.length;
-        const maxTotalSize = MAX_REMOTE_FILE_SIZE * 2; // Allow up to 2x single file limit for multiple files
-        if (totalSize > maxTotalSize) {
-          throw new Error(`Total size of selected files (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds limit (${(maxTotalSize / 1024 / 1024).toFixed(1)}MB). Please select fewer files.`);
+        if (totalSize > MAX_TOTAL_REMOTE_FILE_SIZE) {
+          throw new Error(`Total size of selected files (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds limit (${(MAX_TOTAL_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB). Please select fewer files.`);
         }
 
         try {
@@ -773,6 +772,7 @@ function injectUI() {
 
   const MAX_CONTEXT_CHARS = 50000;
   const MAX_REMOTE_FILE_SIZE = 2 * 1024 * 1024; // 2MB limit for remote files
+  const MAX_TOTAL_REMOTE_FILE_SIZE = MAX_REMOTE_FILE_SIZE * 2; // 4MB total limit for multiple files
   const FETCH_TIMEOUT = 30000; // 30 seconds timeout
   const OMNIGRAPH_AGENT_BASE_URL = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
   const OMNIGRAPH_AGENT_API_URL = 'https://api.github.com/repos/twhetzel/omnigraph-agent/contents/dist/context';
