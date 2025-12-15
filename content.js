@@ -913,8 +913,9 @@ function injectUI() {
 
       // Check content-length header if available
       const contentLength = res.headers.get('content-length');
-      if (contentLength && parseInt(contentLength, 10) > MAX_REMOTE_FILE_SIZE) {
-        throw new Error(`File too large (${(parseInt(contentLength, 10) / 1024 / 1024).toFixed(1)}MB). Maximum size is ${(MAX_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB.`);
+      const size = parseInt(contentLength, 10);
+      if (contentLength && size > MAX_REMOTE_FILE_SIZE) {
+        throw new Error(`File too large (${(size / 1024 / 1024).toFixed(1)}MB). Maximum size is ${(MAX_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB.`);
       }
 
       // Read response with size limit
