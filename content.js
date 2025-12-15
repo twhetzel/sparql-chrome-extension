@@ -906,7 +906,6 @@ function injectUI() {
 
     try {
       const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`Failed to fetch URL (${res.status})`);
@@ -942,11 +941,12 @@ function injectUI() {
 
       return text;
     } catch (err) {
-      clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
         throw new Error('Request timed out. The file may be too large or the server is slow.');
       }
       throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
