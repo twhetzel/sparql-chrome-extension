@@ -633,8 +633,9 @@ function injectUI() {
         const url = `${OMNIGRAPH_AGENT_BASE_URL}${filename}`;
         const text = await loadRemoteContext(url);
 
-        // Track total size across all files
-        totalSize += text.length;
+        // Track total size across all files (use byte length for consistency with loadRemoteContext limits)
+        const textBytes = new TextEncoder().encode(text).length;
+        totalSize += textBytes;
         if (totalSize > MAX_TOTAL_REMOTE_FILE_SIZE) {
           throw new Error(`Total size of selected files (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds limit (${(MAX_TOTAL_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB). Please select fewer files.`);
         }
