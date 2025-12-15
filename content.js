@@ -615,17 +615,37 @@ function injectUI() {
     }
 
     const filenames = Array.from(checkboxes).map(cb => cb.value);
+
+    // Limit number of files to prevent memory issues
+    if (filenames.length > MAX_FILES_TO_LOAD) {
+      setContextStatus(`Too many files selected (${filenames.length}). Maximum is ${MAX_FILES_TO_LOAD}.`, 'error');
+      return;
+    }
+
     setContextStatus(`Loading ${filenames.length} file(s) from omnigraph repo...`, 'info');
 
     try {
       const contexts = [];
+      let totalSize = 0;
 
-      // Load all selected files
+      // Load all selected files with size tracking
       for (const filename of filenames) {
         const url = `${OMNIGRAPH_AGENT_BASE_URL}${filename}`;
         const text = await loadRemoteContext(url);
-        const parsed = JSON.parse(text);
-        contexts.push(parsed);
+
+        // Track total size across all files (use byte length for consistency with loadRemoteContext limits)
+        const textBytes = new TextEncoder().encode(text).length;
+        totalSize += textBytes;
+        if (totalSize > MAX_TOTAL_REMOTE_FILE_SIZE) {
+          throw new Error(`Total size of selected files (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds limit (${(MAX_TOTAL_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB). Please select fewer files.`);
+        }
+
+        try {
+          const parsed = JSON.parse(text);
+          contexts.push(parsed);
+        } catch (parseErr) {
+          throw new Error(`Failed to parse ${filename}: ${parseErr.message}`);
+        }
       }
 
       // Merge contexts
@@ -751,6 +771,10 @@ function injectUI() {
   });
 
   const MAX_CONTEXT_CHARS = 50000;
+  const MAX_REMOTE_FILE_SIZE = 2 * 1024 * 1024; // 2MB limit for remote files
+  const MAX_TOTAL_REMOTE_FILE_SIZE = MAX_REMOTE_FILE_SIZE * 2; // 4MB total limit (allows 2 files at max per-file size)
+  const MAX_FILES_TO_LOAD = 10; // Maximum number of files to load at once
+  const FETCH_TIMEOUT = 30000; // 30 seconds timeout
   const OMNIGRAPH_AGENT_BASE_URL = 'https://raw.githubusercontent.com/twhetzel/omnigraph-agent/main/dist/context/';
   const OMNIGRAPH_AGENT_API_URL = 'https://api.github.com/repos/twhetzel/omnigraph-agent/contents/dist/context';
 
@@ -877,9 +901,55 @@ function injectUI() {
   };
 
   const loadRemoteContext = async (url) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch URL (${res.status})`);
-    return res.text();
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch URL (${res.status})`);
+      }
+
+      // Check content-length header if available
+      const contentLength = res.headers.get('content-length');
+      const size = parseInt(contentLength, 10);
+      if (contentLength && size > MAX_REMOTE_FILE_SIZE) {
+        throw new Error(`File too large (${(size / 1024 / 1024).toFixed(1)}MB). Maximum size is ${(MAX_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB.`);
+      }
+
+      // Read response with size limit
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let text = '';
+      let totalSize = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        totalSize += value.length;
+        if (totalSize > MAX_REMOTE_FILE_SIZE) {
+          reader.cancel();
+          throw new Error(`File too large (exceeds ${(MAX_REMOTE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB limit).`);
+        }
+
+        text += decoder.decode(value, { stream: true });
+      }
+
+      // Decode any remaining bytes
+      text += decoder.decode();
+
+      return text;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out. The file may be too large or the server is slow.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   };
 
   const mergeContextFiles = (contexts) => {
@@ -1769,8 +1839,8 @@ function injectUI() {
             }
 
             let userContent = context
-              ? `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}\n\nIMPORTANT: Include all necessary PREFIX declarations at the beginning of the query.`
-              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Include all necessary PREFIX declarations at the beginning of the query. Only return the query, no explanation:\n\n${prompt}`;
+              ? `Use the following additional context when writing the SPARQL query:\n---\n${context}\n---\n\nRequest:\n${prompt}\n\nIMPORTANT: Include only PREFIX declarations at the beginning of the query needed to run the query.`
+              : `Write a SPARQL query for the following request, suitable for the YASGUI endpoint. Include only PREFIX declarations at the beginning of the query needed to run the query. Only return the query, no explanation:\n\n${prompt}`;
 
             userContent = `EXTENSION_MODE\n\n${userContent}`;
 
