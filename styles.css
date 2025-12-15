@@ -233,19 +233,6 @@
   background: #fee2e2;
   border-color: #fca5a5;
   color: #dc2626;
-  animation: nl-pulse-recording 1.5s ease-in-out infinite;
-}
-
-@keyframes nl-pulse-recording {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
 }
 
 .nl-voice-btn:disabled {
@@ -288,12 +275,35 @@
   cursor: not-allowed;
 }
 
+.nl-context-collapsible {
+  margin-top: 12px;
+}
+
+.nl-context-collapsible.is-collapsed .nl-context-section,
+.nl-context-collapsible.is-collapsed .nl-divider {
+  display: none;
+}
+
+.nl-context-collapsible.is-collapsed .nl-context-toggle-icon {
+  transform: rotate(-90deg);
+}
+
 .nl-context-label {
   display: block;
   font-size: 0.85rem;
   color: #374151;
   margin-bottom: 6px;
   position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nl-context-toggle-icon {
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.2s ease;
+  font-size: 0.7rem;
+  vertical-align: middle;
 }
 
 .nl-context-help {

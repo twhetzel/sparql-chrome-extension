@@ -382,18 +382,20 @@ function injectUI() {
     <select id="nl-model-select" class="nl-model-select">
       <option value="gpt-4.1">gpt-4.1</option>
     </select>
-    <label class="nl-context-label" for="nl-context-input">
-      Optional context
-      <button type="button" class="nl-context-help" aria-label="Help with context" title="Help with context">
-        <span aria-hidden="true">?</span>
-      </button>
-      <div id="nl-context-help-tooltip" class="nl-context-help-tooltip" role="tooltip" hidden>
-        <p>The context field allows you to provide additional information about your ontology that helps generate more accurate SPARQL queries. You can paste ontology snippets, prefixes, or upload a file containing relevant context.</p>
-        <p>Need help creating a context file for your ontology? <a href="https://github.com/twhetzel/sparql-chrome-extension/issues" target="_blank" rel="noopener noreferrer">Ask for help on our issue tracker</a>.</p>
-        <button type="button" class="nl-context-help-close" aria-label="Close help">×</button>
-      </div>
-    </label>
-    <div class="nl-context-section">
+    <div class="nl-context-collapsible">
+      <label class="nl-context-label" for="nl-context-input">
+        <span class="nl-context-toggle-icon">▼</span>
+        Optional prompt context
+        <button type="button" class="nl-context-help" aria-label="Help with context" title="Help with context">
+          <span aria-hidden="true">?</span>
+        </button>
+        <div id="nl-context-help-tooltip" class="nl-context-help-tooltip" role="tooltip" hidden>
+          <p>The context field allows you to provide additional information about your ontology that helps generate more accurate SPARQL queries. You can paste ontology snippets, prefixes, or upload a file containing relevant context.</p>
+          <p>Need help creating a context file for your ontology? <a href="https://github.com/twhetzel/sparql-chrome-extension/issues" target="_blank" rel="noopener noreferrer">Ask for help on our issue tracker</a>.</p>
+          <button type="button" class="nl-context-help-close" aria-label="Close help">×</button>
+        </div>
+      </label>
+      <div class="nl-context-section">
       <div class="nl-context-source-row">
         <label for="nl-context-source">
           Context source
@@ -424,8 +426,9 @@ function injectUI() {
         <button id="nl-context-clear" type="button" class="nl-button nl-button--secondary">Clear context</button>
       </div>
       <div id="nl-context-status" class="nl-context-status" aria-live="polite"></div>
+      </div>
+      <hr class="nl-divider" aria-hidden="true">
     </div>
-    <hr class="nl-divider" aria-hidden="true">
     <div id="nl-controls" class="nl-controls">
       <button id="nl-submit" class="nl-button nl-button--primary">Convert</button>
       <button id="nl-clear" class="nl-button">Clear</button>
@@ -1506,6 +1509,20 @@ function injectUI() {
   contextHelpClose?.addEventListener('click', (e) => {
     e.stopPropagation();
     hideContextHelp();
+  });
+
+  // Collapsible context section
+  const contextCollapsible = document.querySelector('.nl-context-collapsible');
+  const contextLabel = document.querySelector('.nl-context-label');
+
+  contextLabel?.addEventListener('click', (e) => {
+    // Don't toggle if clicking the help button
+    if (e.target.closest('.nl-context-help')) {
+      return;
+    }
+    if (contextCollapsible) {
+      contextCollapsible.classList.toggle('is-collapsed');
+    }
   });
 
   // Close tooltip when clicking outside
